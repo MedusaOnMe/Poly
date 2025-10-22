@@ -61,6 +61,7 @@ function App() {
         const tradesArray = Object.values(data)
           .sort((a, b) => b.timestamp - a.timestamp)
           .slice(0, 100)
+
         setTrades(tradesArray)
       }
     })
@@ -103,37 +104,6 @@ function App() {
             </h1>
             <nav className="hidden lg:flex gap-6 items-center">
               <a href="#" className="text-sm font-semibold text-skin hover:text-skin-light">LIVE</a>
-              <a href="#" className="text-sm font-medium text-gray-500 hover:text-gray-300">LEADERBOARD</a>
-              <a href="#" className="text-sm font-medium text-gray-500 hover:text-gray-300">MODELS</a>
-              <div className="h-4 w-px bg-gray-700"></div>
-              {aiData.filter(ai => ai.wallet_address).map(ai => (
-                <div
-                  key={ai.id}
-                  className="relative group"
-                >
-                  <button className="text-sm font-medium text-gray-500 hover:text-gray-300">
-                    VIEW {ai.name?.toUpperCase()} WALLET ▼
-                  </button>
-                  <div className="absolute top-full left-0 mt-1 bg-dark-grey border border-gray-700 rounded shadow-lg py-1 w-40 z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
-                    <a
-                      href={`https://hyperbot.network/trader/${ai.wallet_address}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="block px-3 py-1.5 text-xs text-gray-300 hover:bg-gray-800 hover:text-skin"
-                    >
-                      Hyperbot ↗
-                    </a>
-                    <a
-                      href={`https://bscscan.com/address/${ai.wallet_address}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="block px-3 py-1.5 text-xs text-gray-300 hover:bg-gray-800 hover:text-skin"
-                    >
-                      BscScan ↗
-                    </a>
-                  </div>
-                </div>
-              ))}
             </nav>
           </div>
           <div className="flex items-center gap-4 text-xs">
@@ -289,31 +259,53 @@ function App() {
                     <div key={idx} className="border-b border-gray-800 py-3 hover:bg-dark-grey transition-colors">
                       {/* Header */}
                       <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2.5">
                           <div className="w-5 h-5 overflow-hidden border-2 flex-shrink-0" style={{ borderColor: trade.ai_id === 'grok' ? '#000000' : color, clipPath: 'circle(50%)' }}>
                             <img src={logoSrc} alt={trade.ai_name} className="object-cover" style={{ width: '120%', height: '120%' }} />
                           </div>
-                          <span className="font-bold" style={{ color }}>{trade.ai_name}</span>
-                          <span className="text-gray-500">completed a</span>
-                          <span className={`font-bold ${isLong ? 'text-red-500' : 'text-green-500'}`}>
-                            {isLong ? 'long' : 'short'}
+                          <span className="font-bold text-sm" style={{ color }}>{trade.ai_name}</span>
+                          <span className="text-gray-600">•</span>
+                          <span className={`font-bold text-sm ${isLong ? 'text-green-500' : 'text-red-500'}`}>
+                            {isLong ? 'LONG' : 'SHORT'}
                           </span>
-                          <span className="text-gray-500">trade on</span>
-                          <span className="font-bold text-yellow-500">₿ {trade.symbol?.replace('USDT', '')}!</span>
+                          <span className="text-gray-600">•</span>
+                          <span className="font-bold text-sm text-yellow-500">{trade.symbol?.replace('USDT', '')}</span>
                         </div>
                         <span className="text-gray-500 text-xs font-mono">{new Date(trade.timestamp).toLocaleString('en-US', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: true })}</span>
                       </div>
 
                       {/* Trade Details */}
-                      <div className="ml-7 space-y-1 text-xs font-mono">
-                        <div><span className="text-gray-500">Price:</span> <span className="text-gray-300">${trade.entry_price?.toFixed(2)} → ${trade.exit_price?.toFixed(2)}</span></div>
-                        <div><span className="text-gray-500">Quantity:</span> <span className="text-gray-300">{trade.quantity?.toFixed(4)}</span></div>
-                        <div><span className="text-gray-500">Notional:</span> <span className="text-gray-300">${trade.notional_entry?.toFixed(0)} → ${trade.notional_exit?.toFixed(0)}</span></div>
-                        <div><span className="text-gray-500">Holding time:</span> <span className="text-gray-300">{trade.holding_time || '0H 0M'}</span></div>
-                        <div className="pt-1">
-                          <span className="text-gray-500">NET P&L: </span>
-                          <span className={`font-bold ${isProfitable ? 'text-green-500' : 'text-red-500'}`}>
-                            {isProfitable ? '+' : '-'}${Math.abs(trade.pnl || 0).toFixed(2)}
+                      <div className="ml-7 mt-2 bg-gray-900/50 rounded p-2 border border-gray-800">
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs font-mono mb-2">
+                          <div className="flex justify-between">
+                            <span className="text-gray-500">Entry:</span>
+                            <span className="text-gray-200 font-semibold">${trade.entry_price?.toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-500">Exit:</span>
+                            <span className="text-gray-200 font-semibold">${trade.exit_price?.toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-500">Quantity:</span>
+                            <span className="text-gray-300">{trade.quantity?.toFixed(4)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-500">Leverage:</span>
+                            <span className="text-yellow-400 font-semibold">{trade.leverage}x</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-500">Notional:</span>
+                            <span className="text-gray-300">${trade.notional_entry?.toFixed(0)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-500">Duration:</span>
+                            <span className="text-gray-300">{trade.holding_time || '0H 0M'}</span>
+                          </div>
+                        </div>
+                        <div className="pt-2 border-t border-gray-800 flex justify-between items-center">
+                          <span className="text-gray-400 text-xs font-semibold">NET P&L:</span>
+                          <span className={`text-sm font-bold ${isProfitable ? 'text-green-400' : 'text-red-400'}`}>
+                            {isProfitable ? '+' : ''}${(trade.pnl || 0).toFixed(2)} ({((trade.pnl / trade.notional_entry) * 100).toFixed(2)}%)
                           </span>
                         </div>
                       </div>
@@ -448,15 +440,11 @@ function App() {
                   • Trading frequency: Every 5 minutes<br/>
                   • Maximum leverage: 10x<br/>
                   • Risk management: Stop loss and take profit orders placed automatically<br/>
-                  • Position sizing: 10-15% of capital per trade<br/>
                   • Orders executed via Aster DEX perpetual futures
                 </div>
                 <div className="mt-3">
                   <div className="text-skin mb-1">STRATEGY:</div>
-                  Each AI has a DISTINCT trading personality and style. They analyze real-time market data (RSI, MACD, EMA, volume) and make autonomous trading decisions with varying risk profiles - from conservative to aggressive.
-                </div>
-                <div className="mt-3 text-gray-500 text-[10px]">
-                  * All models powered by GPT-4o for advanced market analysis
+                  All AIs have the same prompt. They analyze real-time market data (RSI, MACD, EMA, volume) and make autonomous trading decisions with varying risk profiles - from conservative to aggressive.
                 </div>
               </div>
             )}

@@ -5,7 +5,7 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 import { AI_PERSONAS } from './ai-traders.js'
 import { initializeAITrader, getAllAITraders, getAllPositions, cleanOldTrades, db } from './firebase.js'
-import { initializeAPIs, runAllAITraders, updateUnrealizedPnL, updateMarketDataJob, updateAllBalances } from './trading-engine.js'
+import { initializeAPIs, runAllAITraders, updateUnrealizedPnL, updateMarketDataJob, updateAllBalances, closeExpiredPositions } from './trading-engine.js'
 
 dotenv.config()
 
@@ -149,14 +149,14 @@ app.listen(PORT, async () => {
 
   await initialize()
 
-  // Schedule trading cycles every 3 minutes
-  cron.schedule('*/3 * * * *', () => {
+  // Schedule trading cycles every 2 minutes
+  cron.schedule('*/2 * * * *', () => {
     console.log(`\n⏰ Scheduled trading cycle triggered at ${new Date().toISOString()}`)
     runAllAITraders()
   })
 
-  // Schedule balance updates every 10 seconds
-  cron.schedule('*/10 * * * * *', () => {
+  // Schedule balance updates every 1 minute
+  cron.schedule('* * * * *', () => {
     updateAllBalances()
   })
 
@@ -170,6 +170,11 @@ app.listen(PORT, async () => {
     updateMarketDataJob()
   })
 
+  // Schedule position time limit checks every 30 seconds
+  cron.schedule('*/30 * * * * *', () => {
+    closeExpiredPositions()
+  })
+
   // Schedule trade cleanup every hour
   cron.schedule('0 * * * *', () => {
     console.log('🗑️  Running trade cleanup...')
@@ -177,10 +182,11 @@ app.listen(PORT, async () => {
   })
 
   console.log('📅 Scheduled jobs:')
-  console.log('   - Balance updates: Every 10 seconds')
-  console.log('   - Trading cycles: Every 3 minutes')
+  console.log('   - Balance updates: Every 1 minute')
+  console.log('   - Trading cycles: Every 2 minutes')
   console.log('   - P&L updates: Every 1 minute')
   console.log('   - Market data: Every 30 seconds')
+  console.log('   - Position time limits: Every 30 seconds')
   console.log('   - Trade cleanup: Every hour')
   console.log('\n✅ All systems operational!\n')
 

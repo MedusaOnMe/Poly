@@ -44,6 +44,91 @@ export async function initializeAPIs(apiKeys) {
   console.log('✅ Aster API clients initialized for all AI traders')
 }
 
+// Close positions that have exceeded their time limits
+export async function closeExpiredPositions() {
+  try {
+    const positions = await getAllPositions()
+    const now = Date.now()
+
+    // Time limits in milliseconds
+    const TIME_LIMITS = {
+      gpt: 45 * 60 * 1000,       // 45 minutes
+      claude: 45 * 60 * 1000,    // 45 minutes
+      deepseek: 5 * 60 * 1000,   // 5 minutes (scalper)
+      grok: 45 * 60 * 1000       // 45 minutes
+    }
+
+    for (const [positionId, position] of Object.entries(positions)) {
+      const aiId = position.ai_id
+      const timeLimit = TIME_LIMITS[aiId] || 30 * 60 * 1000 // default 30 min
+      const holdingTime = now - (position.entry_time || now)
+
+      if (holdingTime > timeLimit) {
+        console.log(`⏰ ${position.ai_name}: Closing ${position.symbol} - exceeded ${timeLimit / 60000} min time limit`)
+
+        const api = asterAPIs[aiId]
+        if (!api) continue
+
+        try {
+          // Get current price
+          const currentPrice = await api.getPrice(position.symbol)
+          const exitPrice = parseFloat(currentPrice.price)
+
+          // Close position
+          await api.closePosition(position.symbol, position.side, position.quantity.toFixed(3))
+
+          // Calculate P&L
+          const priceDiff = position.side === 'LONG'
+            ? exitPrice - position.entry_price
+            : position.entry_price - exitPrice
+          const pnlPercent = (priceDiff / position.entry_price) * 100
+          const pnl = (pnlPercent / 100) * position.notional
+
+          // Calculate holding time display
+          const holdingTimeMs = now - position.entry_time
+          const holdingHours = Math.floor(holdingTimeMs / 3600000)
+          const holdingMins = Math.floor((holdingTimeMs % 3600000) / 60000)
+          const holdingTimeStr = `${holdingHours}H ${holdingMins}M`
+
+          // Update AI balance
+          const aiData = await getAITrader(aiId)
+          await updateAITrader(aiId, {
+            balance: aiData.balance + pnl
+          })
+
+          // Remove position
+          await removePosition(positionId)
+
+          // Log completed trade
+          await logTrade({
+            ai_id: aiId,
+            ai_name: position.ai_name,
+            action: 'COMPLETED',
+            symbol: position.symbol,
+            side: position.side,
+            quantity: position.quantity,
+            leverage: position.leverage,
+            entry_price: position.entry_price,
+            exit_price: exitPrice,
+            notional_entry: position.notional,
+            notional_exit: position.quantity * exitPrice,
+            pnl: pnl,
+            holding_time: holdingTimeStr,
+            reasoning: `Auto-closed after ${holdingTimeStr} (time limit exceeded)`,
+            message: `Closed ${position.symbol} ${position.side} at $${exitPrice.toFixed(2)} after ${holdingTimeStr}. P&L: $${pnl.toFixed(2)}`
+          })
+
+          console.log(`✅ ${position.ai_name}: Closed ${position.symbol} - P&L: $${pnl.toFixed(2)}`)
+        } catch (error) {
+          console.error(`Error closing expired position for ${position.ai_name}:`, error.message)
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error checking expired positions:', error.message)
+  }
+}
+
 // Fetch and update market data
 export async function updateMarketDataJob() {
   try {
@@ -208,6 +293,16 @@ async function executeDecision(aiId, decision) {
       // Validate balance
       if (aiData.balance <= 0) {
         console.log(`${aiData.name}: Cannot trade with zero balance`)
+
+        // Log as HOLD since we can't execute the trade
+        await logTrade({
+          ai_id: aiId,
+          ai_name: aiData.name,
+          action: 'HOLD',
+          reasoning: `Cannot execute ${decision.action} on ${symbol}: Insufficient balance`,
+          message: decision.message || `Wanted to ${decision.action} ${symbol}, but insufficient balance prevented execution.`
+        })
+
         return
       }
 
@@ -222,12 +317,31 @@ async function executeDecision(aiId, decision) {
       // 2. Calculate notional position value with leverage
       const notionalValue = collateralUSD * leverage
 
+      // Minimum notional value requirement (110 USD after leverage)
+      const MIN_NOTIONAL_USD = 110
+
+      // Check if notional value meets minimum requirement
+      if (notionalValue < MIN_NOTIONAL_USD) {
+        console.log(`${aiData.name}: Notional value $${notionalValue.toFixed(2)} below minimum $${MIN_NOTIONAL_USD}, skipping`)
+
+        // Log as HOLD since we can't execute the trade
+        await logTrade({
+          ai_id: aiId,
+          ai_name: aiData.name,
+          action: 'HOLD',
+          reasoning: `Cannot execute ${decision.action} on ${symbol}: Position size $${notionalValue.toFixed(2)} below minimum $${MIN_NOTIONAL_USD}`,
+          message: decision.message || `Wanted to ${decision.action} ${symbol}, but position size too small.`
+        })
+
+        return
+      }
+
       // 3. Convert to coin quantity
       const quantity = notionalValue / entryPrice
 
-      // Validate quantity is positive and above minimum
-      if (quantity <= 0 || quantity < 0.001) {
-        console.log(`${aiData.name}: Quantity ${quantity} too small for ${symbol}, skipping`)
+      // Validate quantity is positive
+      if (quantity <= 0) {
+        console.log(`${aiData.name}: Invalid quantity ${quantity} for ${symbol}, skipping`)
         return
       }
 
@@ -317,6 +431,19 @@ async function executeDecision(aiId, decision) {
     }
   } catch (error) {
     console.error(`Error executing ${aiData.name}'s decision:`, error.message)
+
+    // Log the failed trade so it shows in model chat
+    try {
+      await logTrade({
+        ai_id: aiId,
+        ai_name: aiData.name,
+        action: 'HOLD',
+        reasoning: `Trade failed: ${error.message}`,
+        message: decision.message || `Wanted to ${decision.action}, but trade execution failed.`
+      })
+    } catch (logError) {
+      console.error(`Error logging failed trade:`, logError.message)
+    }
   }
 }
 
@@ -371,72 +498,37 @@ export async function runAITradingCycle(aiId) {
     // Get futures account info from Aster
     const accountData = await api.getAccount()
 
-    // Get spot account balance (BNB and other holdings)
-    let spotBalanceUSD = 0
-    try {
-      const spotData = await api.getSpotBalance()
-      const spotBalances = spotData.balances || []
+    // Calculate actual account balance: BNB + USDT + Unrealized P&L
+    let actualBalance = 0
 
-      // Calculate USD value of spot holdings
-      for (const balance of spotBalances) {
-        const free = parseFloat(balance.free || 0)
-        const locked = parseFloat(balance.locked || 0)
-        const total = free + locked
-
-        if (total > 0 && balance.asset !== 'USDT') {
-          // Get current price for this asset
-          try {
-            const priceData = await api.getPrice(`${balance.asset}USDT`)
-            const price = parseFloat(priceData.price)
-            spotBalanceUSD += total * price
-          } catch (err) {
-            // If price fetch fails, skip this asset
-            console.log(`⚠️  ${aiData.name}: Could not get price for ${balance.asset}`)
-          }
-        } else if (balance.asset === 'USDT') {
-          spotBalanceUSD += total
-        }
-      }
-    } catch (err) {
-      console.log(`⚠️  ${aiData.name}: Could not fetch spot balance - ${err.message}`)
+    // Get BNB asset and convert to USD at current market price (real-time)
+    const bnbAsset = accountData.assets?.find(a => a.asset === 'BNB')
+    if (bnbAsset && parseFloat(bnbAsset.walletBalance) !== 0) {
+      const bnbPrice = await api.getPrice('BNBUSDT')
+      const bnbPriceUSD = parseFloat(bnbPrice.price)
+      const bnbBalance = parseFloat(bnbAsset.walletBalance)
+      const bnbValueUSD = bnbBalance * bnbPriceUSD
+      actualBalance += bnbValueUSD
     }
 
-    // Filter out empty positions to reduce log spam
-    const activePositions = accountData.positions?.filter(p =>
-      parseFloat(p.positionAmt) !== 0 || parseFloat(p.unrealizedProfit) !== 0
-    ) || []
+    // Add USDT wallet balance (may be negative if used as margin)
+    const usdtAsset = accountData.assets?.find(a => a.asset === 'USDT')
+    if (usdtAsset) {
+      const usdtBalance = parseFloat(usdtAsset.walletBalance || 0)
+      actualBalance += usdtBalance
+    }
 
-    // DEBUG: Log account structure with only active positions
-    console.log(`\n========== ${aiData.name} ACCOUNT DATA (Trading Cycle) ==========`)
-    console.log(JSON.stringify({
-      futuresBalance: accountData.totalWalletBalance,
-      spotBalance: spotBalanceUSD.toFixed(2),
-      totalUnrealizedProfit: accountData.totalUnrealizedProfit,
-      totalMarginBalance: accountData.totalMarginBalance,
-      totalInitialMargin: accountData.totalInitialMargin,
-      totalMaintMargin: accountData.totalMaintMargin,
-      availableBalance: accountData.availableBalance,
-      activePositions: activePositions
-    }, null, 2))
-    console.log(`==============================================\n`)
-
-    // Total balance = futures wallet + spot holdings
-    const futuresBalance = parseFloat(accountData?.totalWalletBalance || 0)
-    const actualBalance = futuresBalance + spotBalanceUSD
-
-    console.log(`${aiData.name} Account - Futures: ${futuresBalance.toFixed(2)}, Spot: ${spotBalanceUSD.toFixed(2)}, Total: ${actualBalance.toFixed(2)}, Available: ${accountData?.availableBalance}`)
+    // Add unrealized P&L (increases if positive, decreases if negative)
+    const unrealizedPnL = parseFloat(accountData?.totalUnrealizedProfit || 0)
+    actualBalance += unrealizedPnL
 
     // Get current positions
     const allPositions = await getAllPositions()
     const aiPositions = Object.values(allPositions).filter(p => p.ai_id === aiId)
 
-    // Calculate total return
+    // Calculate total return (actualBalance already includes unrealized P&L)
     const initialBalance = 500 // Each AI starts with $500
-    // Use totalUnrealizedProfit directly from Aster API (source of truth!)
-    // Don't calculate from Firebase positions - those may be stale
-    const unrealizedPnL = parseFloat(accountData?.totalUnrealizedProfit || 0)
-    const accountValue = actualBalance + unrealizedPnL
-    const totalReturn = ((accountValue - initialBalance) / initialBalance) * 100
+    const totalReturn = ((actualBalance - initialBalance) / initialBalance) * 100
 
     // Update balance and total return
     await updateAITrader(aiId, {
@@ -445,10 +537,14 @@ export async function runAITradingCycle(aiId) {
     })
 
     // STORE BALANCE SNAPSHOT (historical)
+    // actualBalance now includes unrealized P&L, so for historical tracking:
+    // - wallet balance (without P&L) = actualBalance - unrealizedPnL
+    // - account_value (with P&L) = actualBalance
+    const walletBalance = actualBalance - unrealizedPnL
     await storeBalanceSnapshot(aiId, {
-      balance: actualBalance,
+      balance: walletBalance,
       unrealized_pnl: unrealizedPnL,
-      account_value: accountValue,
+      account_value: actualBalance,
       total_return: totalReturn,
       positions_count: aiPositions.length
     })
@@ -497,8 +593,8 @@ export async function runAITradingCycle(aiId) {
     // Execute decision
     await executeDecision(aiId, decision)
 
-    // Update PnL history
-    await updatePnLHistory(aiId, accountValue)
+    // Update PnL history (actualBalance already includes unrealized P&L)
+    await updatePnLHistory(aiId, actualBalance)
 
     console.log(`✅ ${aiData.name} cycle complete`)
   } catch (error) {
@@ -516,73 +612,37 @@ export async function updateAllBalances() {
       // Get futures account info from Aster
       const accountData = await api.getAccount()
 
-      // Get spot account balance (BNB and other holdings)
-      let spotBalanceUSD = 0
-      try {
-        const spotData = await api.getSpotBalance()
-        const spotBalances = spotData.balances || []
+      // Calculate actual account balance: BNB + USDT + Unrealized P&L
+      let actualBalance = 0
 
-        // Calculate USD value of spot holdings
-        for (const balance of spotBalances) {
-          const free = parseFloat(balance.free || 0)
-          const locked = parseFloat(balance.locked || 0)
-          const total = free + locked
-
-          if (total > 0 && balance.asset !== 'USDT') {
-            // Get current price for this asset
-            try {
-              const priceData = await api.getPrice(`${balance.asset}USDT`)
-              const price = parseFloat(priceData.price)
-              spotBalanceUSD += total * price
-            } catch (err) {
-              // If price fetch fails, skip this asset
-              console.log(`⚠️  ${aiData.name}: Could not get price for ${balance.asset}`)
-            }
-          } else if (balance.asset === 'USDT') {
-            spotBalanceUSD += total
-          }
-        }
-      } catch (err) {
-        console.log(`⚠️  ${aiData.name}: Could not fetch spot balance - ${err.message}`)
+      // Get BNB asset and convert to USD at current market price (real-time)
+      const bnbAsset = accountData.assets?.find(a => a.asset === 'BNB')
+      if (bnbAsset && parseFloat(bnbAsset.walletBalance) !== 0) {
+        const bnbPrice = await api.getPrice('BNBUSDT')
+        const bnbPriceUSD = parseFloat(bnbPrice.price)
+        const bnbBalance = parseFloat(bnbAsset.walletBalance)
+        const bnbValueUSD = bnbBalance * bnbPriceUSD
+        actualBalance += bnbValueUSD
       }
 
-      // Filter out empty positions to reduce log spam
-      const activePositions = accountData.positions?.filter(p =>
-        parseFloat(p.positionAmt) !== 0 || parseFloat(p.unrealizedProfit) !== 0
-      ) || []
+      // Add USDT wallet balance (may be negative if used as margin)
+      const usdtAsset = accountData.assets?.find(a => a.asset === 'USDT')
+      if (usdtAsset) {
+        const usdtBalance = parseFloat(usdtAsset.walletBalance || 0)
+        actualBalance += usdtBalance
+      }
 
-      // DEBUG: Log account structure with only active positions
-      console.log(`\n========== ${aiData.name} ACCOUNT DATA (10s update) ==========`)
-      console.log(JSON.stringify({
-        futuresBalance: accountData.totalWalletBalance,
-        spotBalance: spotBalanceUSD.toFixed(2),
-        totalUnrealizedProfit: accountData.totalUnrealizedProfit,
-        totalMarginBalance: accountData.totalMarginBalance,
-        totalInitialMargin: accountData.totalInitialMargin,
-        totalMaintMargin: accountData.totalMaintMargin,
-        availableBalance: accountData.availableBalance,
-        activePositions: activePositions
-      }, null, 2))
-      console.log(`==============================================\n`)
-
-      // Total balance = futures wallet + spot holdings
-      const futuresBalance = parseFloat(accountData?.totalWalletBalance || 0)
-      const actualBalance = futuresBalance + spotBalanceUSD
-
-      // Use totalUnrealizedProfit directly from Aster API (source of truth!)
-      // Don't calculate from Firebase positions - those may be stale
+      // Add unrealized P&L (increases if positive, decreases if negative)
       const unrealizedPnL = parseFloat(accountData?.totalUnrealizedProfit || 0)
-      const accountValue = actualBalance + unrealizedPnL
-
-      console.log(`${aiData.name}: Futures=${futuresBalance.toFixed(2)} | Spot=${spotBalanceUSD.toFixed(2)} | Total Wallet=${actualBalance.toFixed(2)} | Unreal PnL=${unrealizedPnL.toFixed(2)} | Account Value=${accountValue.toFixed(2)}`)
+      actualBalance += unrealizedPnL
 
       // Update balance in Firebase
       await updateAITrader(aiId, {
         balance: actualBalance
       })
 
-      // Update PnL history
-      await updatePnLHistory(aiId, accountValue)
+      // Update PnL history (actualBalance already includes unrealized P&L)
+      await updatePnLHistory(aiId, actualBalance)
     }
   } catch (error) {
     console.error('Error updating balances:', error.message)

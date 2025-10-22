@@ -136,27 +136,12 @@ export default function PnLChart({ aiData, positions = [] }) {
   const options = {
     responsive: true,
     maintainAspectRatio: false,
+    animation: false,
     interaction: { mode: 'index', intersect: false },
     plugins: {
       legend: { display: false },
       tooltip: {
-        enabled: true,
-        backgroundColor: 'rgba(0, 0, 0, 0.95)',
-        titleColor: '#f5deb3',
-        bodyColor: '#e5e7eb',
-        borderColor: '#374151',
-        borderWidth: 1,
-        padding: 10,
-        titleFont: { size: 10, family: '-apple-system, BlinkMacSystemFont, sans-serif' },
-        bodyFont: { size: 10, family: '-apple-system, BlinkMacSystemFont, sans-serif' },
-        callbacks: {
-          label: (ctx) => {
-            const value = ctx.parsed.y
-            const pnl = value - 500
-            const pnlPercent = ((pnl / 500) * 100).toFixed(2)
-            return `${ctx.dataset.label}: $${value.toFixed(2)} (${pnlPercent >= 0 ? '+' : ''}${pnlPercent}%)`
-          }
-        }
+        enabled: false
       }
     },
     scales: {
@@ -185,10 +170,10 @@ export default function PnLChart({ aiData, positions = [] }) {
 
   return (
     <div className="h-full w-full flex flex-col bg-dark-grey">
-      <div className="flex-1 min-h-0">
+      <div className="flex-1 min-h-0 max-h-[calc(100%-120px)] overflow-hidden">
         <Line ref={chartRef} data={{ labels, datasets }} options={options} plugins={[endpointLabelsPlugin]} />
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-0 border-t border-gray-800 flex-shrink-0">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-0 border-t border-gray-800 flex-shrink-0 overflow-visible">
         {filteredAIs.map(ai => {
           const color = AI_COLORS[ai.id]
           const logoSrc = AI_LOGOS[ai.id]
@@ -203,41 +188,19 @@ export default function PnLChart({ aiData, positions = [] }) {
           const pnl = ((totalValue - 500) / 500) * 100
 
           return (
-            <div key={ai.id} className="border-r border-gray-800 last:border-r-0 p-2 text-center bg-dark-grey hover:bg-gray-800 transition-colors">
-              <div className="w-8 h-8 mx-auto mb-1.5 overflow-hidden border-2 flex items-center justify-center" style={{ borderColor: ai.id === 'grok' ? '#000' : color, clipPath: 'circle(50%)' }}>
-                <img src={logoSrc} alt={ai.name} className="object-cover" style={{ width: '120%', height: '120%' }} />
+            <div key={ai.id} className="border-r border-gray-800 last:border-r-0 p-1.5 text-center bg-dark-grey hover:bg-gray-800 transition-colors">
+              <div className="w-7 h-7 mx-auto mb-1 overflow-hidden border-2 flex items-center justify-center" style={{ borderColor: ai.id === 'grok' ? '#000' : color, clipPath: 'circle(50%)' }}>
+                <img src={logoSrc} alt={ai.name || ai.id} className="object-cover" style={{ width: '120%', height: '120%' }} />
               </div>
-              <div className="text-xs font-bold mb-0.5 text-skin">{ai.name.toUpperCase()}</div>
-              <div className="font-mono text-[10px] text-gray-500">Cash: ${balance.toFixed(2)}</div>
-              <div className="font-mono text-xs font-semibold text-gray-300">${totalValue.toLocaleString('en-US', { maximumFractionDigits: 2 })}</div>
-              <div className={`font-mono text-xs ${pnl >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+              <div className="text-[11px] font-bold mb-0.5 text-skin">{ai.name?.toUpperCase() || ai.id?.toUpperCase() || 'UNKNOWN'}</div>
+              <div className="font-mono text-[9px] text-gray-500">Cash: ${balance.toFixed(2)}</div>
+              <div className="font-mono text-[11px] font-semibold text-gray-300">${totalValue.toLocaleString('en-US', { maximumFractionDigits: 2 })}</div>
+              <div className={`font-mono text-[11px] ${pnl >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                 {pnl >= 0 ? '+' : ''}{pnl.toFixed(2)}%
               </div>
               {unrealizedPnL !== 0 && (
-                <div className={`font-mono text-[9px] ${unrealizedPnL >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                <div className={`font-mono text-[8px] ${unrealizedPnL >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                   {unrealizedPnL >= 0 ? '+' : ''}${unrealizedPnL.toFixed(2)} unreal
-                </div>
-              )}
-              {ai.wallet_address && (
-                <div className="mt-1 flex flex-col gap-0.5">
-                  <a
-                    href={`https://hyperbot.network/trader/${ai.wallet_address}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-[10px] text-gray-500 hover:text-skin underline"
-                    title="View Aster DEX trading stats on Hyperbot"
-                  >
-                    Hyperbot →
-                  </a>
-                  <a
-                    href={`https://bscscan.com/address/${ai.wallet_address}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-[10px] text-gray-500 hover:text-skin underline"
-                    title="View on-chain transactions on BscScan"
-                  >
-                    BscScan →
-                  </a>
                 </div>
               )}
             </div>
