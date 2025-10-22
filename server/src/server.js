@@ -5,7 +5,7 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 import { AI_PERSONAS } from './ai-traders.js'
 import { initializeAITrader, getAllAITraders, getAllPositions, cleanOldTrades, db } from './firebase.js'
-import { initializeAPIs, runAllAITraders, updateUnrealizedPnL, updateMarketDataJob } from './trading-engine.js'
+import { initializeAPIs, runAllAITraders, updateUnrealizedPnL, updateMarketDataJob, updateAllBalances } from './trading-engine.js'
 
 dotenv.config()
 
@@ -155,6 +155,11 @@ app.listen(PORT, async () => {
     runAllAITraders()
   })
 
+  // Schedule balance updates every 10 seconds
+  cron.schedule('*/10 * * * * *', () => {
+    updateAllBalances()
+  })
+
   // Schedule P&L updates every minute
   cron.schedule('* * * * *', () => {
     updateUnrealizedPnL()
@@ -172,6 +177,7 @@ app.listen(PORT, async () => {
   })
 
   console.log('📅 Scheduled jobs:')
+  console.log('   - Balance updates: Every 10 seconds')
   console.log('   - Trading cycles: Every 3 minutes')
   console.log('   - P&L updates: Every 1 minute')
   console.log('   - Market data: Every 30 seconds')

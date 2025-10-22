@@ -454,6 +454,37 @@ export async function runAITradingCycle(aiId) {
   }
 }
 
+// Update all account balances from Aster (lightweight, runs every 10s)
+export async function updateAllBalances() {
+  try {
+    for (const aiId of Object.keys(AI_PERSONAS)) {
+      const api = asterAPIs[aiId]
+      const aiData = await getAITrader(aiId)
+
+      // Get account balance from Aster
+      const balanceData = await api.getBalance()
+      const usdtBalance = balanceData.find(b => b.asset === 'USDT')
+      const actualBalance = parseFloat(usdtBalance?.balance || aiData.balance)
+
+      // Get positions for unrealized P&L
+      const allPositions = await getAllPositions()
+      const aiPositions = Object.values(allPositions).filter(p => p.ai_id === aiId)
+      const unrealizedPnL = aiPositions.reduce((sum, p) => sum + (p.unrealized_pnl || 0), 0)
+      const accountValue = actualBalance + unrealizedPnL
+
+      // Update balance in Firebase
+      await updateAITrader(aiId, {
+        balance: actualBalance
+      })
+
+      // Update PnL history
+      await updatePnLHistory(aiId, accountValue)
+    }
+  } catch (error) {
+    console.error('Error updating balances:', error.message)
+  }
+}
+
 // Run all AI traders
 export async function runAllAITraders() {
   console.log('\n' + '='.repeat(50))
