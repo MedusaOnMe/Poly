@@ -20,11 +20,24 @@ import {
 const asterAPIs = {}
 
 // Initialize Aster API clients
-export function initializeAPIs(apiKeys) {
-  Object.keys(AI_PERSONAS).forEach((aiId, index) => {
+export async function initializeAPIs(apiKeys) {
+  for (const [index, aiId] of Object.keys(AI_PERSONAS).entries()) {
     const { apiKey, secretKey } = apiKeys[index]
     asterAPIs[aiId] = new AsterAPI(apiKey, secretKey)
-  })
+
+    // Set position mode to hedge for each account
+    try {
+      await asterAPIs[aiId].setPositionModeHedge()
+      console.log(`✅ ${aiId}: Hedge mode enabled`)
+    } catch (error) {
+      // If already in hedge mode, this will error - that's okay
+      if (error.response?.data?.code === -4059) {
+        console.log(`✅ ${aiId}: Already in hedge mode`)
+      } else {
+        console.log(`⚠️  ${aiId}: Could not set hedge mode - ${error.message}`)
+      }
+    }
+  }
   console.log('✅ Aster API clients initialized for all AI traders')
 }
 

@@ -105,12 +105,15 @@ export async function updatePnLHistory(aiId, currentBalance) {
   const aiData = await getAITrader(aiId)
   const history = aiData.pnl_history || Array(24).fill(500)
 
+  // Ensure currentBalance is valid
+  const validBalance = isNaN(currentBalance) || !isFinite(currentBalance) ? 0 : currentBalance
+
   // Shift array and add new value
   history.shift()
-  history.push(currentBalance)
+  history.push(validBalance)
 
-  // Calculate 24h PnL percentage
-  const pnl_24h = ((currentBalance - history[0]) / history[0]) * 100
+  // Calculate 24h PnL percentage (avoid division by zero)
+  const pnl_24h = history[0] > 0 ? ((validBalance - history[0]) / history[0]) * 100 : 0
 
   await updateAITrader(aiId, {
     pnl_history: history,

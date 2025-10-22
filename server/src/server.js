@@ -118,7 +118,7 @@ async function initialize() {
   ]
 
   // Initialize Aster APIs
-  initializeAPIs(apiKeys)
+  await initializeAPIs(apiKeys)
 
   // Initialize AI traders in Firebase (only if they don't exist)
   const existingTraders = await getAllAITraders()

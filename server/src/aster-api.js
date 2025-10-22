@@ -62,6 +62,11 @@ export class AsterAPI {
     return await this._signedRequest('GET', '/fapi/v3/account')
   }
 
+  // Set position mode to hedge (allows LONG and SHORT positions simultaneously)
+  async setPositionModeHedge() {
+    return await this._signedRequest('POST', '/fapi/v1/positionSide/dual', { dualSidePosition: true })
+  }
+
   // Get current positions
   async getPositions(symbol = null) {
     const params = symbol ? { symbol } : {}
