@@ -334,15 +334,22 @@ export async function updateUnrealizedPnL() {
       const priceDiff = position.side === 'LONG'
         ? markPrice - position.entry_price
         : position.entry_price - markPrice
-      const unrealizedPnl = (priceDiff / position.entry_price) * position.size
+
+      // Use notional instead of size for P&L calculation
+      const positionValue = position.notional || 0
+      const unrealizedPnl = (priceDiff / position.entry_price) * positionValue
       const unrealizedPnlPercent = (priceDiff / position.entry_price) * 100
+
+      // Ensure no NaN values
+      const validUnrealizedPnl = isNaN(unrealizedPnl) || !isFinite(unrealizedPnl) ? 0 : unrealizedPnl
+      const validUnrealizedPnlPercent = isNaN(unrealizedPnlPercent) || !isFinite(unrealizedPnlPercent) ? 0 : unrealizedPnlPercent
 
       // Update position
       await updatePosition(positionId, {
         ...position,
         mark_price: markPrice,
-        unrealized_pnl: unrealizedPnl,
-        unrealized_pnl_percent: unrealizedPnlPercent
+        unrealized_pnl: validUnrealizedPnl,
+        unrealized_pnl_percent: validUnrealizedPnlPercent
       })
     }
   } catch (error) {

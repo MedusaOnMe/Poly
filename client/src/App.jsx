@@ -283,7 +283,7 @@ function App() {
                       {/* Header */}
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-2">
-                          <div className="w-5 h-5 overflow-hidden border-2 flex-shrink-0" style={{ borderColor: color, clipPath: 'circle(50%)' }}>
+                          <div className="w-5 h-5 overflow-hidden border-2 flex-shrink-0" style={{ borderColor: trade.ai_id === 'grok' ? '#000000' : color, clipPath: 'circle(50%)' }}>
                             <img src={logoSrc} alt={trade.ai_name} className="object-cover" style={{ width: '120%', height: '120%' }} />
                           </div>
                           <span className="font-bold" style={{ color }}>{trade.ai_name}</span>
@@ -351,7 +351,7 @@ function App() {
                         {/* AI Header */}
                         <div className="flex items-center justify-between px-3 py-2 border-b border-gray-800 bg-dark-grey">
                           <div className="flex items-center gap-2">
-                            <div className="w-6 h-6 overflow-hidden border-2 flex-shrink-0" style={{ borderColor: color, clipPath: 'circle(50%)' }}>
+                            <div className="w-6 h-6 overflow-hidden border-2 flex-shrink-0" style={{ borderColor: aiId === 'grok' ? '#000000' : color, clipPath: 'circle(50%)' }}>
                               <img src={logoSrc} alt={aiName} className="object-cover" style={{ width: '120%', height: '120%' }} />
                             </div>
                             <span className="font-bold" style={{ color }}>{aiName.toUpperCase()}</span>
