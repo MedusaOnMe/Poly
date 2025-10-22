@@ -25,6 +25,8 @@ function App() {
   const [trades, setTrades] = useState([])
   const [marketData, setMarketData] = useState([])
   const [isConnected, setIsConnected] = useState(false)
+  const [modelFilter, setModelFilter] = useState('all')
+  const [completedTradesFilter, setCompletedTradesFilter] = useState('all')
 
   useEffect(() => {
     // Listen to AI traders data
@@ -161,14 +163,22 @@ function App() {
                 <div className="flex items-center justify-between text-xs font-mono mb-3 pb-2 border-b border-gray-800">
                   <div className="flex items-center gap-2">
                     <span className="text-gray-500 font-bold">FILTER:</span>
-                    <select className="border border-gray-800 bg-dark-grey px-2 py-1 text-xs rounded text-gray-300">
-                      <option>ALL MODELS ▼</option>
+                    <select
+                      className="border border-gray-800 bg-dark-grey px-2 py-1 text-xs rounded text-gray-300"
+                      value={modelFilter}
+                      onChange={(e) => setModelFilter(e.target.value)}
+                    >
+                      <option value="all">ALL MODELS ▼</option>
+                      <option value="gpt">GPT</option>
+                      <option value="claude">CLAUDE</option>
+                      <option value="deepseek">DEEPSEEK</option>
+                      <option value="grok">GROK</option>
                     </select>
                   </div>
                 </div>
 
                 {/* Show ALL AI messages (HOLD, OPEN, COMPLETED) */}
-                {trades.length > 0 ? trades.map((trade, idx) => {
+                {trades.filter(t => modelFilter === 'all' || t.ai_id === modelFilter).length > 0 ? trades.filter(t => modelFilter === 'all' || t.ai_id === modelFilter).map((trade, idx) => {
                   const logoSrc = AI_LOGOS[trade.ai_id]
                   const color = AI_COLORS[trade.ai_id]
                   const message = trade.message || trade.reasoning
@@ -176,8 +186,8 @@ function App() {
                   return (
                     <div key={idx} className="border-b border-gray-800 py-3 hover:bg-dark-grey transition-colors">
                       <div className="flex items-start gap-2">
-                        <div className="w-6 h-6 mt-0.5 overflow-hidden border-2 flex-shrink-0" style={{ borderColor: color, clipPath: 'circle(50%)' }}>
-                          <img src={logoSrc} alt={trade.ai_name} className="object-cover" style={{ width: '120%', height: '120%' }} />
+                        <div className="w-6 h-6 mt-0.5 overflow-hidden border-2 flex-shrink-0" style={{ borderColor: trade.ai_id === 'grok' ? '#000000' : color, clipPath: 'circle(50%)' }}>
+                          <img src={logoSrc} alt={trade.ai_name} className="object-cover" style={{ width: '120%', height: '120%', marginTop: '-10%' }} />
                         </div>
                         <div className="flex-1">
                           <div className="flex items-center justify-between mb-1">
@@ -217,14 +227,22 @@ function App() {
                 <div className="flex items-center justify-between text-xs font-mono mb-3 pb-2 border-b border-gray-800">
                   <div className="flex items-center gap-2">
                     <span className="text-gray-500 font-bold">FILTER:</span>
-                    <select className="border border-gray-800 bg-dark-grey px-2 py-1 text-xs rounded text-gray-300">
-                      <option>ALL MODELS ▼</option>
+                    <select
+                      className="border border-gray-800 bg-dark-grey px-2 py-1 text-xs rounded text-gray-300"
+                      value={completedTradesFilter}
+                      onChange={(e) => setCompletedTradesFilter(e.target.value)}
+                    >
+                      <option value="all">ALL MODELS ▼</option>
+                      <option value="gpt">GPT</option>
+                      <option value="claude">CLAUDE</option>
+                      <option value="deepseek">DEEPSEEK</option>
+                      <option value="grok">GROK</option>
                     </select>
                   </div>
                   <span className="text-gray-500">Showing Last 100 Trades</span>
                 </div>
 
-                {trades.filter(t => t.action === 'COMPLETED').length > 0 ? trades.filter(t => t.action === 'COMPLETED').slice(0, 100).map((trade, idx) => {
+                {trades.filter(t => t.action === 'COMPLETED' && (completedTradesFilter === 'all' || t.ai_id === completedTradesFilter)).length > 0 ? trades.filter(t => t.action === 'COMPLETED' && (completedTradesFilter === 'all' || t.ai_id === completedTradesFilter)).slice(0, 100).map((trade, idx) => {
                   const isLong = trade.side === 'LONG'
                   const isProfitable = (trade.pnl || 0) >= 0
                   const logoSrc = AI_LOGOS[trade.ai_id]
