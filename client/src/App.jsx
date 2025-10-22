@@ -82,19 +82,26 @@ function App() {
     }
   }, [])
 
-  // Calculate total account value
-  const totalValue = aiData.reduce((sum, ai) => sum + (ai.balance || 500), 0)
+  // Calculate total account value (balance + unrealized P&L from positions)
+  const totalValue = aiData.reduce((sum, ai) => {
+    const balance = ai.balance || 0
+    // Get unrealized P&L from this AI's positions
+    const aiPositions = positions.filter(p => p.ai_id === ai.id)
+    const unrealizedPnL = aiPositions.reduce((pnlSum, p) => pnlSum + (p.unrealized_pnl || 0), 0)
+
+    return sum + balance + unrealizedPnL
+  }, 0)
 
   return (
     <div className="h-screen flex flex-col bg-dark-grey text-gray-100">
       {/* Header with Logo and Nav */}
-      <header className="border-b border-gray-800 bg-dark-grey px-6 py-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-8">
-            <h1 className="text-2xl font-bold text-skin">
-              Aster <span className="text-sm font-normal text-gray-500">Arena</span>
+      <header className="border-b border-gray-800 bg-dark-grey px-3 sm:px-6 py-3">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div className="flex items-center gap-4 sm:gap-8">
+            <h1 className="text-xl sm:text-2xl font-bold text-skin">
+              Aster <span className="text-xs sm:text-sm font-normal text-gray-500">Arena</span>
             </h1>
-            <nav className="flex gap-6 items-center">
+            <nav className="hidden lg:flex gap-6 items-center">
               <a href="#" className="text-sm font-semibold text-skin hover:text-skin-light">LIVE</a>
               <a href="#" className="text-sm font-medium text-gray-500 hover:text-gray-300">LEADERBOARD</a>
               <a href="#" className="text-sm font-medium text-gray-500 hover:text-gray-300">MODELS</a>
@@ -139,13 +146,13 @@ function App() {
       </header>
 
       {/* Ticker Strip */}
-      <div className="border-b border-gray-800 bg-dark-grey py-2 overflow-hidden">
-        <div className="flex gap-8 ticker-scroll">
+      <div className="border-b border-gray-800 bg-dark-grey py-1 sm:py-2 overflow-hidden">
+        <div className="flex gap-4 sm:gap-8 ticker-scroll">
           {marketData.concat(marketData).map((coin, idx) => (
-            <div key={idx} className="flex items-center gap-2 px-4 whitespace-nowrap">
-              <span className="text-xs font-bold text-skin">{coin.symbol || 'BTC'}</span>
-              <span className="font-mono text-sm font-bold text-gray-200">${(coin.price || 0).toFixed(2)}</span>
-              <span className={`text-xs font-mono ${(coin.change_24h || 0) >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+            <div key={idx} className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4 whitespace-nowrap">
+              <span className="text-[10px] sm:text-xs font-bold text-skin">{coin.symbol || 'BTC'}</span>
+              <span className="font-mono text-xs sm:text-sm font-bold text-gray-200">${(coin.price || 0).toFixed(2)}</span>
+              <span className={`text-[10px] sm:text-xs font-mono ${(coin.change_24h || 0) >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                 {(coin.change_24h || 0) >= 0 ? '+' : ''}{(coin.change_24h || 0).toFixed(2)}%
               </span>
             </div>
@@ -154,9 +161,9 @@ function App() {
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
         {/* Left: Chart - NO PADDING, CHART IS THE BACKGROUND */}
-        <div className="flex-1 flex flex-col bg-dark-grey">
+        <div className="flex-1 flex flex-col bg-dark-grey min-h-[300px] lg:min-h-0">
           <div className="px-4 py-3 border-b border-gray-800 bg-dark-grey text-center">
             <div className="text-xs font-mono text-gray-500">TOTAL ACCOUNT VALUE</div>
           </div>
@@ -168,14 +175,14 @@ function App() {
         </div>
 
         {/* Right: Tabs & Trade Feed */}
-        <div className="w-96 border-l border-gray-800 flex flex-col bg-dark-grey">
+        <div className="w-full lg:w-96 border-t lg:border-t-0 lg:border-l border-gray-800 flex flex-col bg-dark-grey">
           {/* Tabs */}
-          <div className="border-b border-gray-800 flex text-xs font-mono">
+          <div className="border-b border-gray-800 flex text-[10px] sm:text-xs font-mono overflow-x-auto">
             {['COMPLETED TRADES', 'MODELCHAT', 'POSITIONS', 'README.TXT'].map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`flex-1 py-2 px-2 transition-colors ${
+                className={`flex-1 py-2 px-1 sm:px-2 transition-colors whitespace-nowrap ${
                   activeTab === tab
                     ? 'bg-skin text-black font-bold'
                     : 'bg-dark-grey text-gray-400 hover:bg-gray-800 hover:text-skin'
@@ -349,60 +356,65 @@ function App() {
                     return (
                       <div key={aiId} className="mb-6 border border-gray-800 bg-dark-grey">
                         {/* AI Header */}
-                        <div className="flex items-center justify-between px-3 py-2 border-b border-gray-800 bg-dark-grey">
+                        <div className="flex items-center justify-between px-3 py-2 border-b border-gray-800 bg-dark-grey flex-wrap gap-2">
                           <div className="flex items-center gap-2">
                             <div className="w-6 h-6 overflow-hidden border-2 flex-shrink-0" style={{ borderColor: aiId === 'grok' ? '#000000' : color, clipPath: 'circle(50%)' }}>
                               <img src={logoSrc} alt={aiName} className="object-cover" style={{ width: '120%', height: '120%' }} />
                             </div>
-                            <span className="font-bold" style={{ color }}>{aiName.toUpperCase()}</span>
+                            <span className="font-bold text-sm sm:text-base" style={{ color }}>{aiName.toUpperCase()}</span>
                           </div>
-                          <div>
-                            <span className="text-gray-500 text-xs">TOTAL UNREALIZED P&L: </span>
+                          <div className="text-xs sm:text-sm">
+                            <span className="text-gray-500">TOTAL UNREALIZED P&L: </span>
                             <span className={`font-bold ${totalPnL >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                               ${totalPnL.toFixed(2)}
                             </span>
                           </div>
                         </div>
 
-                        {/* Table Header */}
-                        <div className="grid grid-cols-6 gap-2 px-3 py-2 border-b border-gray-800 text-xs font-bold text-gray-500">
-                          <div>SIDE</div>
-                          <div>COIN</div>
-                          <div>LEVERAGE</div>
-                          <div>NOTIONAL</div>
-                          <div>EXIT PLAN</div>
-                          <div className="text-right">UNREAL P&L</div>
-                        </div>
+                        {/* Table - Horizontal scroll on small screens */}
+                        <div className="overflow-x-auto">
+                          {/* Table Header */}
+                          <div className="grid grid-cols-7 gap-1 sm:gap-2 px-2 sm:px-3 py-2 border-b border-gray-800 text-[10px] sm:text-xs font-bold text-gray-500 min-w-[600px]">
+                            <div>SIDE</div>
+                            <div>COIN</div>
+                            <div>LEV</div>
+                            <div>NOTIONAL</div>
+                            <div>ENTRY</div>
+                            <div>EXIT PLAN</div>
+                            <div className="text-right">UNREAL P&L</div>
+                          </div>
 
-                        {/* Positions */}
-                        {aiPositions.slice().reverse().map((pos, idx) => {
-                          const isProfitable = (pos.unrealized_pnl || 0) >= 0
-                          return (
-                            <div key={idx} className="grid grid-cols-6 gap-2 px-3 py-2 border-b border-gray-800 text-xs font-mono hover:bg-gray-800 transition-colors">
-                              <div className={`font-bold ${pos.side === 'LONG' ? 'text-green-500' : 'text-red-500'}`}>
-                                {pos.side}
+                          {/* Positions */}
+                          {aiPositions.slice().reverse().map((pos, idx) => {
+                            const isProfitable = (pos.unrealized_pnl || 0) >= 0
+                            return (
+                              <div key={idx} className="grid grid-cols-7 gap-1 sm:gap-2 px-2 sm:px-3 py-2 border-b border-gray-800 text-[10px] sm:text-xs font-mono hover:bg-gray-800 transition-colors min-w-[600px]">
+                                <div className={`font-bold ${pos.side === 'LONG' ? 'text-green-500' : 'text-red-500'}`}>
+                                  {pos.side}
+                                </div>
+                                <div className="flex items-center gap-1 text-yellow-500 font-bold">
+                                  ₿ {pos.symbol?.replace('USDT', '')}
+                                </div>
+                                <div className="text-gray-300">{pos.leverage}X</div>
+                                <div className="text-green-500">${pos.notional?.toFixed(0) || '0'}</div>
+                                <div className="text-gray-300">${pos.entry_price?.toFixed(2) || '0.00'}</div>
+                                <div className="text-gray-400">
+                                  {pos.stop_loss && pos.take_profit ? (
+                                    <div className="flex flex-col gap-0.5">
+                                      <div className="text-[9px] sm:text-[10px]">SL: ${pos.stop_loss.toFixed(2)}</div>
+                                      <div className="text-[9px] sm:text-[10px]">TP: ${pos.take_profit.toFixed(2)}</div>
+                                    </div>
+                                  ) : (
+                                    <span className="text-[9px] sm:text-[10px]">-</span>
+                                  )}
+                                </div>
+                                <div className={`text-right font-bold ${isProfitable ? 'text-green-500' : 'text-red-500'}`}>
+                                  {isProfitable ? '+' : ''}${(pos.unrealized_pnl || 0).toFixed(2)}
+                                </div>
                               </div>
-                              <div className="flex items-center gap-1 text-yellow-500 font-bold">
-                                ₿ {pos.symbol?.replace('USDT', '')}
-                              </div>
-                              <div className="text-gray-300">{pos.leverage}X</div>
-                              <div className="text-green-500">${pos.notional?.toFixed(0) || '0'}</div>
-                              <div className="text-gray-400">
-                                {pos.stop_loss && pos.take_profit ? (
-                                  <div className="flex flex-col gap-0.5">
-                                    <div className="text-[10px]">SL: ${pos.stop_loss.toFixed(2)}</div>
-                                    <div className="text-[10px]">TP: ${pos.take_profit.toFixed(2)}</div>
-                                  </div>
-                                ) : (
-                                  <span className="text-[10px]">-</span>
-                                )}
-                              </div>
-                              <div className={`text-right font-bold ${isProfitable ? 'text-green-500' : 'text-red-500'}`}>
-                                {isProfitable ? '+' : ''}${(pos.unrealized_pnl || 0).toFixed(2)}
-                              </div>
-                            </div>
-                          )
-                        })}
+                            )
+                          })}
+                        </div>
 
                         {/* Available Cash */}
                         <div className="px-3 py-2 text-xs font-mono text-gray-400">

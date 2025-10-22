@@ -31,10 +31,13 @@ export async function initializeAPIs(apiKeys) {
       console.log(`✅ ${aiId}: Hedge mode enabled`)
     } catch (error) {
       // If already in hedge mode, this will error - that's okay
-      if (error.response?.data?.code === -4059) {
+      const errorCode = error.response?.data?.code
+      if (errorCode === -4059) {
         console.log(`✅ ${aiId}: Already in hedge mode`)
+      } else if (errorCode === -4061) {
+        console.log(`⚠️  ${aiId}: Cannot change position mode - close all positions first`)
       } else {
-        console.log(`⚠️  ${aiId}: Could not set hedge mode - ${error.message}`)
+        console.log(`⚠️  ${aiId}: Could not set hedge mode - ${error.message} (code: ${errorCode})`)
       }
     }
   }
