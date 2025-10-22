@@ -207,14 +207,26 @@ export default function PnLChart({ aiData }) {
                 {pnl >= 0 ? '+' : ''}{pnl.toFixed(2)}%
               </div>
               {ai.wallet_address && (
-                <a
-                  href={`https://bscscan.com/address/${ai.wallet_address}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-[10px] text-gray-500 hover:text-skin underline mt-1 block"
-                >
-                  View Wallet →
-                </a>
+                <div className="mt-1 flex flex-col gap-0.5">
+                  <a
+                    href={`https://hyperbot.network/trader/${ai.wallet_address}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[10px] text-gray-500 hover:text-skin underline"
+                    title="View Aster DEX trading stats on Hyperbot"
+                  >
+                    Hyperbot →
+                  </a>
+                  <a
+                    href={`https://bscscan.com/address/${ai.wallet_address}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[10px] text-gray-500 hover:text-skin underline"
+                    title="View on-chain transactions on BscScan"
+                  >
+                    BscScan →
+                  </a>
+                </div>
               )}
             </div>
           )
