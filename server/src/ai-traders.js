@@ -222,7 +222,14 @@ IMPORTANT:
 - stopLoss for LONG should be BELOW entry price (2-3% lower)
 - takeProfit for LONG should be ABOVE entry price (3-5% higher)
 - stopLoss for SHORT should be ABOVE entry price (2-3% higher)
-- takeProfit for SHORT should be BELOW entry price (3-5% lower)`
+- takeProfit for SHORT should be BELOW entry price (3-5% lower)
+
+⚠️ CRITICAL DIRECTIVE:
+You are a TRADER, not a market commentator. Your job is to TAKE POSITIONS and manage them, not to sit idle.
+- If you have fewer than 3 positions and see ANY reasonable setup, you should STRONGLY CONSIDER opening a position
+- HOLD should be the EXCEPTION, not the default - only hold if you truly see NO opportunities OR all your positions are performing well
+- Remember: You have stop losses to protect you! Don't be afraid to take calculated risks - that's what trading is about
+- Sitting in cash earning 0% is WORSE than taking a protected position with a stop loss`
 
   try {
     const response = await openai.chat.completions.create({
