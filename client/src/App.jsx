@@ -27,6 +27,7 @@ function App() {
   const [isConnected, setIsConnected] = useState(false)
   const [modelFilter, setModelFilter] = useState('all')
   const [completedTradesFilter, setCompletedTradesFilter] = useState('all')
+  const [openDropdown, setOpenDropdown] = useState(null)
 
   useEffect(() => {
     // Listen to AI traders data
@@ -98,8 +99,38 @@ function App() {
               <a href="#" className="text-sm font-medium text-gray-500 hover:text-gray-300">LEADERBOARD</a>
               <a href="#" className="text-sm font-medium text-gray-500 hover:text-gray-300">MODELS</a>
               <div className="h-4 w-px bg-gray-700"></div>
-              <a href="https://hyperbot.network/aster-event" target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-gray-500 hover:text-gray-300">HYPERBOT ↗</a>
-              <a href="https://bscscan.com" target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-gray-500 hover:text-gray-300">BSCSCAN ↗</a>
+              {aiData.filter(ai => ai.wallet_address).map(ai => (
+                <div
+                  key={ai.id}
+                  className="relative"
+                  onMouseEnter={() => setOpenDropdown(ai.id)}
+                  onMouseLeave={() => setOpenDropdown(null)}
+                >
+                  <button className="text-sm font-medium text-gray-500 hover:text-gray-300">
+                    VIEW {ai.name?.toUpperCase()} ▼
+                  </button>
+                  {openDropdown === ai.id && (
+                    <div className="absolute top-full left-0 mt-1 bg-dark-grey border border-gray-700 rounded shadow-lg py-1 w-40 z-50">
+                      <a
+                        href={`https://hyperbot.network/trader/${ai.wallet_address}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block px-3 py-1.5 text-xs text-gray-300 hover:bg-gray-800 hover:text-skin"
+                      >
+                        Hyperbot ↗
+                      </a>
+                      <a
+                        href={`https://bscscan.com/address/${ai.wallet_address}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block px-3 py-1.5 text-xs text-gray-300 hover:bg-gray-800 hover:text-skin"
+                      >
+                        BscScan ↗
+                      </a>
+                    </div>
+                  )}
+                </div>
+              ))}
             </nav>
           </div>
           <div className="flex items-center gap-4 text-xs">
