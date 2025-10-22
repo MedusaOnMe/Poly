@@ -99,9 +99,7 @@ function App() {
       <header className="border-b border-gray-800 bg-dark-grey px-3 sm:px-6 py-3">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-4 sm:gap-8">
-            <h1 className="text-xl sm:text-2xl font-bold text-skin">
-              Aster <span className="text-xs sm:text-sm font-normal text-gray-500">Arena</span>
-            </h1>
+            <img src="/logo.png" alt="Aster Arena" className="h-8 sm:h-10" />
             <nav className="hidden lg:flex gap-6 items-center">
               <a href="#" className="text-sm font-semibold text-skin hover:text-skin-light">LIVE</a>
             </nav>

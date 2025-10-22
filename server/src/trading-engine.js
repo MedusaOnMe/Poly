@@ -19,6 +19,32 @@ import {
 // Store API instances for each AI
 const asterAPIs = {}
 
+// Cache for symbol precision info
+const symbolPrecisionCache = {}
+
+// Fetch and cache exchange info for precision
+async function initializeSymbolPrecisions() {
+  try {
+    const api = Object.values(asterAPIs)[0]
+    if (!api) return
+
+    const exchangeInfo = await api.getExchangeInfo()
+
+    if (exchangeInfo && exchangeInfo.symbols) {
+      for (const symbolInfo of exchangeInfo.symbols) {
+        // Store quantity precision (quantityPrecision is the number of decimals allowed)
+        symbolPrecisionCache[symbolInfo.symbol] = {
+          quantityPrecision: symbolInfo.quantityPrecision || 3,
+          pricePrecision: symbolInfo.pricePrecision || 2
+        }
+      }
+      console.log(`✅ Cached precision info for ${Object.keys(symbolPrecisionCache).length} symbols`)
+    }
+  } catch (error) {
+    console.error('Error initializing symbol precisions:', error.message)
+  }
+}
+
 // Initialize Aster API clients
 export async function initializeAPIs(apiKeys) {
   for (const [index, aiId] of Object.keys(AI_PERSONAS).entries()) {
@@ -42,6 +68,9 @@ export async function initializeAPIs(apiKeys) {
     }
   }
   console.log('✅ Aster API clients initialized for all AI traders')
+
+  // Initialize symbol precision cache
+  await initializeSymbolPrecisions()
 }
 
 // Close positions that have exceeded their time limits
@@ -74,8 +103,9 @@ export async function closeExpiredPositions() {
           const currentPrice = await api.getPrice(position.symbol)
           const exitPrice = parseFloat(currentPrice.price)
 
-          // Close position
-          await api.closePosition(position.symbol, position.side, position.quantity.toFixed(3))
+          // Close position with correct precision
+          const precision = getQuantityPrecision(position.symbol)
+          await api.closePosition(position.symbol, position.side, position.quantity.toFixed(precision))
 
           // Calculate P&L
           const priceDiff = position.side === 'LONG'
@@ -168,12 +198,14 @@ export async function updateMarketDataJob() {
 
 // Helper function to get correct precision for a symbol
 function getQuantityPrecision(symbol) {
-  // Most symbols use 3 decimal places
-  // Some like BTC/ETH/BNB use fewer decimals
-  if (symbol.includes('BTC') || symbol.includes('ETH') || symbol.includes('BNB')) {
-    return 2  // 2 decimal places for BTC/ETH/BNB
+  // Use cached precision if available
+  if (symbolPrecisionCache[symbol]) {
+    return symbolPrecisionCache[symbol].quantityPrecision
   }
-  return 3  // 3 decimal places for most altcoins
+
+  // Fallback to default precision (should rarely hit this)
+  console.warn(`⚠️  No cached precision for ${symbol}, using default 3`)
+  return 3
 }
 
 // Execute AI trading decision
@@ -229,8 +261,9 @@ async function executeDecision(aiId, decision) {
         const holdingMins = Math.floor((holdingTimeMs % 3600000) / 60000)
         const holdingTime = `${holdingHours}H ${holdingMins}M`
 
-        // Close position on exchange
-        await api.closePosition(position.symbol, position.side, position.quantity)
+        // Close position on exchange with correct precision
+        const precision = getQuantityPrecision(position.symbol)
+        await api.closePosition(position.symbol, position.side, position.quantity.toFixed(precision))
 
         // Cancel any open SL/TP orders for this position
         try {
