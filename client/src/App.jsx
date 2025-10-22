@@ -93,10 +93,13 @@ function App() {
             <h1 className="text-2xl font-bold text-skin">
               Aster <span className="text-sm font-normal text-gray-500">Arena</span>
             </h1>
-            <nav className="flex gap-6">
+            <nav className="flex gap-6 items-center">
               <a href="#" className="text-sm font-semibold text-skin hover:text-skin-light">LIVE</a>
               <a href="#" className="text-sm font-medium text-gray-500 hover:text-gray-300">LEADERBOARD</a>
               <a href="#" className="text-sm font-medium text-gray-500 hover:text-gray-300">MODELS</a>
+              <div className="h-4 w-px bg-gray-700"></div>
+              <a href="https://hyperbot.network/aster-event" target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-gray-500 hover:text-gray-300">HYPERBOT ↗</a>
+              <a href="https://bscscan.com" target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-gray-500 hover:text-gray-300">BSCSCAN ↗</a>
             </nav>
           </div>
           <div className="flex items-center gap-4 text-xs">
