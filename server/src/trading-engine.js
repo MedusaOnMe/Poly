@@ -368,8 +368,38 @@ export async function runAITradingCycle(aiId) {
     const api = asterAPIs[aiId]
     const aiData = await getAITrader(aiId)
 
-    // Get account info from Aster (includes totalWalletBalance)
+    // Get futures account info from Aster
     const accountData = await api.getAccount()
+
+    // Get spot account balance (BNB and other holdings)
+    let spotBalanceUSD = 0
+    try {
+      const spotData = await api.getSpotBalance()
+      const spotBalances = spotData.balances || []
+
+      // Calculate USD value of spot holdings
+      for (const balance of spotBalances) {
+        const free = parseFloat(balance.free || 0)
+        const locked = parseFloat(balance.locked || 0)
+        const total = free + locked
+
+        if (total > 0 && balance.asset !== 'USDT') {
+          // Get current price for this asset
+          try {
+            const priceData = await api.getPrice(`${balance.asset}USDT`)
+            const price = parseFloat(priceData.price)
+            spotBalanceUSD += total * price
+          } catch (err) {
+            // If price fetch fails, skip this asset
+            console.log(`⚠️  ${aiData.name}: Could not get price for ${balance.asset}`)
+          }
+        } else if (balance.asset === 'USDT') {
+          spotBalanceUSD += total
+        }
+      }
+    } catch (err) {
+      console.log(`⚠️  ${aiData.name}: Could not fetch spot balance - ${err.message}`)
+    }
 
     // Filter out empty positions to reduce log spam
     const activePositions = accountData.positions?.filter(p =>
@@ -379,7 +409,8 @@ export async function runAITradingCycle(aiId) {
     // DEBUG: Log account structure with only active positions
     console.log(`\n========== ${aiData.name} ACCOUNT DATA (Trading Cycle) ==========`)
     console.log(JSON.stringify({
-      totalWalletBalance: accountData.totalWalletBalance,
+      futuresBalance: accountData.totalWalletBalance,
+      spotBalance: spotBalanceUSD.toFixed(2),
       totalUnrealizedProfit: accountData.totalUnrealizedProfit,
       totalMarginBalance: accountData.totalMarginBalance,
       totalInitialMargin: accountData.totalInitialMargin,
@@ -389,11 +420,11 @@ export async function runAITradingCycle(aiId) {
     }, null, 2))
     console.log(`==============================================\n`)
 
-    // totalWalletBalance = total wallet balance (what Aster UI shows as "Balance")
-    // This includes available balance + margin locked in positions
-    const actualBalance = parseFloat(accountData?.totalWalletBalance || aiData.balance)
+    // Total balance = futures wallet + spot holdings
+    const futuresBalance = parseFloat(accountData?.totalWalletBalance || 0)
+    const actualBalance = futuresBalance + spotBalanceUSD
 
-    console.log(`${aiData.name} Account - Total Wallet: ${accountData?.totalWalletBalance}, Available: ${accountData?.availableBalance}`)
+    console.log(`${aiData.name} Account - Futures: ${futuresBalance.toFixed(2)}, Spot: ${spotBalanceUSD.toFixed(2)}, Total: ${actualBalance.toFixed(2)}, Available: ${accountData?.availableBalance}`)
 
     // Get current positions
     const allPositions = await getAllPositions()
@@ -482,8 +513,38 @@ export async function updateAllBalances() {
       const api = asterAPIs[aiId]
       const aiData = await getAITrader(aiId)
 
-      // Get account info from Aster (includes totalWalletBalance)
+      // Get futures account info from Aster
       const accountData = await api.getAccount()
+
+      // Get spot account balance (BNB and other holdings)
+      let spotBalanceUSD = 0
+      try {
+        const spotData = await api.getSpotBalance()
+        const spotBalances = spotData.balances || []
+
+        // Calculate USD value of spot holdings
+        for (const balance of spotBalances) {
+          const free = parseFloat(balance.free || 0)
+          const locked = parseFloat(balance.locked || 0)
+          const total = free + locked
+
+          if (total > 0 && balance.asset !== 'USDT') {
+            // Get current price for this asset
+            try {
+              const priceData = await api.getPrice(`${balance.asset}USDT`)
+              const price = parseFloat(priceData.price)
+              spotBalanceUSD += total * price
+            } catch (err) {
+              // If price fetch fails, skip this asset
+              console.log(`⚠️  ${aiData.name}: Could not get price for ${balance.asset}`)
+            }
+          } else if (balance.asset === 'USDT') {
+            spotBalanceUSD += total
+          }
+        }
+      } catch (err) {
+        console.log(`⚠️  ${aiData.name}: Could not fetch spot balance - ${err.message}`)
+      }
 
       // Filter out empty positions to reduce log spam
       const activePositions = accountData.positions?.filter(p =>
@@ -493,7 +554,8 @@ export async function updateAllBalances() {
       // DEBUG: Log account structure with only active positions
       console.log(`\n========== ${aiData.name} ACCOUNT DATA (10s update) ==========`)
       console.log(JSON.stringify({
-        totalWalletBalance: accountData.totalWalletBalance,
+        futuresBalance: accountData.totalWalletBalance,
+        spotBalance: spotBalanceUSD.toFixed(2),
         totalUnrealizedProfit: accountData.totalUnrealizedProfit,
         totalMarginBalance: accountData.totalMarginBalance,
         totalInitialMargin: accountData.totalInitialMargin,
@@ -503,16 +565,16 @@ export async function updateAllBalances() {
       }, null, 2))
       console.log(`==============================================\n`)
 
-      // totalWalletBalance = total wallet balance (what Aster UI shows as "Balance")
-      // This includes available balance + margin locked in positions
-      const actualBalance = parseFloat(accountData?.totalWalletBalance || aiData.balance)
+      // Total balance = futures wallet + spot holdings
+      const futuresBalance = parseFloat(accountData?.totalWalletBalance || 0)
+      const actualBalance = futuresBalance + spotBalanceUSD
 
       // Use totalUnrealizedProfit directly from Aster API (source of truth!)
       // Don't calculate from Firebase positions - those may be stale
       const unrealizedPnL = parseFloat(accountData?.totalUnrealizedProfit || 0)
       const accountValue = actualBalance + unrealizedPnL
 
-      console.log(`${aiData.name}: Wallet=${actualBalance.toFixed(2)} | Unreal PnL=${unrealizedPnL.toFixed(2)} | Total=${accountValue.toFixed(2)}`)
+      console.log(`${aiData.name}: Futures=${futuresBalance.toFixed(2)} | Spot=${spotBalanceUSD.toFixed(2)} | Total Wallet=${actualBalance.toFixed(2)} | Unreal PnL=${unrealizedPnL.toFixed(2)} | Account Value=${accountValue.toFixed(2)}`)
 
       // Update balance in Firebase
       await updateAITrader(aiId, {
