@@ -401,9 +401,9 @@ export async function runAITradingCycle(aiId) {
 
     // Calculate total return
     const initialBalance = 500 // Each AI starts with $500
-    // Note: actualBalance from Aster API already includes margin but NOT unrealized P&L
-    // So we need to add unrealized P&L from positions to get true account value
-    const unrealizedPnL = aiPositions.reduce((sum, p) => sum + (p.unrealized_pnl || 0), 0)
+    // Use totalUnrealizedProfit directly from Aster API (source of truth!)
+    // Don't calculate from Firebase positions - those may be stale
+    const unrealizedPnL = parseFloat(accountData?.totalUnrealizedProfit || 0)
     const accountValue = actualBalance + unrealizedPnL
     const totalReturn = ((accountValue - initialBalance) / initialBalance) * 100
 
@@ -507,10 +507,9 @@ export async function updateAllBalances() {
       // This includes available balance + margin locked in positions
       const actualBalance = parseFloat(accountData?.totalWalletBalance || aiData.balance)
 
-      // Get positions for unrealized P&L
-      const allPositions = await getAllPositions()
-      const aiPositions = Object.values(allPositions).filter(p => p.ai_id === aiId)
-      const unrealizedPnL = aiPositions.reduce((sum, p) => sum + (p.unrealized_pnl || 0), 0)
+      // Use totalUnrealizedProfit directly from Aster API (source of truth!)
+      // Don't calculate from Firebase positions - those may be stale
+      const unrealizedPnL = parseFloat(accountData?.totalUnrealizedProfit || 0)
       const accountValue = actualBalance + unrealizedPnL
 
       console.log(`${aiData.name}: Wallet=${actualBalance.toFixed(2)} | Unreal PnL=${unrealizedPnL.toFixed(2)} | Total=${accountValue.toFixed(2)}`)
