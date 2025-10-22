@@ -216,8 +216,8 @@ async function executeDecision(aiId, decision) {
       const entryPrice = parseFloat(currentPrice.price)
 
       // Calculate position size properly:
-      // 1. Determine how much of balance to use (AI suggests 'size' in USD, cap at 30% of balance)
-      const collateralUSD = Math.min(size || aiData.balance * 0.2, aiData.balance * 0.3)
+      // 1. Determine how much of balance to use (AI suggests 'size' in USD, cap at 70% of balance)
+      const collateralUSD = Math.min(size || aiData.balance * 0.5, aiData.balance * 0.7)
 
       // 2. Calculate notional position value with leverage
       const notionalValue = collateralUSD * leverage

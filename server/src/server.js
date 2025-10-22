@@ -4,7 +4,7 @@ import cron from 'node-cron'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import { AI_PERSONAS } from './ai-traders.js'
-import { initializeAITrader, getAllAITraders, getAllPositions, db } from './firebase.js'
+import { initializeAITrader, getAllAITraders, getAllPositions, cleanOldTrades, db } from './firebase.js'
 import { initializeAPIs, runAllAITraders, updateUnrealizedPnL, updateMarketDataJob } from './trading-engine.js'
 
 dotenv.config()
@@ -165,10 +165,17 @@ app.listen(PORT, async () => {
     updateMarketDataJob()
   })
 
+  // Schedule trade cleanup every hour
+  cron.schedule('0 * * * *', () => {
+    console.log('🗑️  Running trade cleanup...')
+    cleanOldTrades()
+  })
+
   console.log('📅 Scheduled jobs:')
   console.log('   - Trading cycles: Every 3 minutes')
   console.log('   - P&L updates: Every 1 minute')
   console.log('   - Market data: Every 30 seconds')
+  console.log('   - Trade cleanup: Every hour')
   console.log('\n✅ All systems operational!\n')
 
   // Run first cycle immediately (optional, for testing)

@@ -72,6 +72,29 @@ export async function logTrade(trade) {
   })
 }
 
+// Clean old trades (keep only last 200)
+export async function cleanOldTrades() {
+  const ref = db.ref('trades')
+  const snapshot = await ref.once('value')
+  const trades = snapshot.val()
+
+  if (!trades) return
+
+  const tradesArray = Object.entries(trades).map(([id, trade]) => ({ id, ...trade }))
+
+  // If we have more than 200 trades, delete the oldest ones
+  if (tradesArray.length > 200) {
+    const sorted = tradesArray.sort((a, b) => b.timestamp - a.timestamp)
+    const toDelete = sorted.slice(200) // Keep first 200, delete rest
+
+    for (const trade of toDelete) {
+      await db.ref(`trades/${trade.id}`).remove()
+    }
+
+    console.log(`🗑️  Cleaned ${toDelete.length} old trades from database`)
+  }
+}
+
 // Update position
 export async function updatePosition(positionId, positionData) {
   const ref = db.ref(`positions/${positionId}`)
