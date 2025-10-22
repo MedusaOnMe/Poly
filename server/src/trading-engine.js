@@ -371,8 +371,9 @@ export async function runAITradingCycle(aiId) {
     // Get account balance from Aster
     const balanceData = await api.getBalance()
     const usdtBalance = balanceData.find(b => b.asset === 'USDT')
-    // Use 'balance' (total wallet balance) not 'availableBalance' (which excludes margins in positions)
-    const actualBalance = parseFloat(usdtBalance?.balance || aiData.balance)
+
+    // Use walletBalance (total wallet) not availableBalance (excludes margin) or balance (may include unrealized pnl)
+    const actualBalance = parseFloat(usdtBalance?.walletBalance || usdtBalance?.availableBalance || aiData.balance)
 
     // Get current positions
     const allPositions = await getAllPositions()
@@ -464,13 +465,20 @@ export async function updateAllBalances() {
       // Get account balance from Aster
       const balanceData = await api.getBalance()
       const usdtBalance = balanceData.find(b => b.asset === 'USDT')
-      const actualBalance = parseFloat(usdtBalance?.balance || aiData.balance)
+
+      // DEBUG: Log the full balance object to see what fields are available
+      console.log(`${aiData.name} Balance Data:`, JSON.stringify(usdtBalance, null, 2))
+
+      // Use walletBalance if available, otherwise fallback to balance
+      const actualBalance = parseFloat(usdtBalance?.walletBalance || usdtBalance?.balance || aiData.balance)
 
       // Get positions for unrealized P&L
       const allPositions = await getAllPositions()
       const aiPositions = Object.values(allPositions).filter(p => p.ai_id === aiId)
       const unrealizedPnL = aiPositions.reduce((sum, p) => sum + (p.unrealized_pnl || 0), 0)
       const accountValue = actualBalance + unrealizedPnL
+
+      console.log(`${aiData.name}: Balance=${actualBalance.toFixed(2)} | Unreal PnL=${unrealizedPnL.toFixed(2)} | Account Value=${accountValue.toFixed(2)}`)
 
       // Update balance in Firebase
       await updateAITrader(aiId, {
