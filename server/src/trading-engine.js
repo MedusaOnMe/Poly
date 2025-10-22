@@ -497,13 +497,22 @@ async function executeDecision(aiId, decision) {
   } catch (error) {
     console.error(`Error executing ${aiData.name}'s decision:`, error.message)
 
+    // Determine error message based on error code
+    let errorReason = `Trade failed: ${error.message}`
+    const errorCode = error.response?.data?.code
+
+    if (errorCode === -2019) {
+      // Margin insufficient error
+      errorReason = 'Trade Not Taken - Exceeds Specified Margin Limits'
+    }
+
     // Log the failed trade so it shows in model chat
     try {
       await logTrade({
         ai_id: aiId,
         ai_name: aiData.name,
         action: 'HOLD',
-        reasoning: `Trade failed: ${error.message}`,
+        reasoning: errorReason,
         message: decision.message || `Wanted to ${decision.action}, but trade execution failed.`
       })
     } catch (logError) {
