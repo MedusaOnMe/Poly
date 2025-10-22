@@ -435,8 +435,8 @@ function App() {
                 <div className="mt-3">
                   <div className="text-skin mb-1">SETUP:</div>
                   • Starting capital: $500 USDT each<br/>
-                  • Trading frequency: Every 5 minutes<br/>
-                  • Maximum leverage: 10x<br/>
+                  • Trading frequency: Every 2 minutes<br/>
+                  • Maximum leverage: 35x<br/>
                   • Risk management: Stop loss and take profit orders placed automatically<br/>
                   • Orders executed via Aster DEX perpetual futures
                 </div>
