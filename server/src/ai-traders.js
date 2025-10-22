@@ -161,26 +161,26 @@ export async function getAIDecision(aiId, marketContext) {
 
     for (const [symbol, data] of Object.entries(technicalAnalysis)) {
       technicalDataPrompt += `\n${symbol} DATA:\n`
-      technicalDataPrompt += `current_price = ${data.current_price.toFixed(2)}, `
-      technicalDataPrompt += `current_ema20 = ${data.intraday.current_ema20?.toFixed(3) || 'N/A'}, `
-      technicalDataPrompt += `current_macd = ${data.intraday.current_macd.toFixed(3)}, `
-      technicalDataPrompt += `current_rsi (7 period) = ${data.intraday.current_rsi_7?.toFixed(3) || 'N/A'}\n`
+      technicalDataPrompt += `current_price = ${(data.current_price || 0).toFixed(2)}, `
+      technicalDataPrompt += `current_ema20 = ${data.intraday?.current_ema20?.toFixed(3) || 'N/A'}, `
+      technicalDataPrompt += `current_macd = ${(data.intraday?.current_macd || 0).toFixed(3)}, `
+      technicalDataPrompt += `current_rsi (7 period) = ${data.intraday?.current_rsi_7?.toFixed(3) || 'N/A'}\n`
 
       technicalDataPrompt += `\nIntraday series (3-minute intervals, last 10 candles):\n`
-      technicalDataPrompt += `Prices: [${data.intraday.prices.map(p => p.toFixed(1)).join(', ')}]\n`
-      technicalDataPrompt += `EMA20: [${data.intraday.ema20_series.map(e => e.toFixed(3)).join(', ')}]\n`
-      technicalDataPrompt += `RSI (7-Period): ${data.intraday.current_rsi_7?.toFixed(3) || 'N/A'}\n`
-      technicalDataPrompt += `RSI (14-Period): ${data.intraday.current_rsi_14?.toFixed(3) || 'N/A'}\n`
+      technicalDataPrompt += `Prices: [${(data.intraday?.prices || []).map(p => (p || 0).toFixed(1)).join(', ')}]\n`
+      technicalDataPrompt += `EMA20: [${(data.intraday?.ema20_series || []).map(e => (e || 0).toFixed(3)).join(', ')}]\n`
+      technicalDataPrompt += `RSI (7-Period): ${data.intraday?.current_rsi_7?.toFixed(3) || 'N/A'}\n`
+      technicalDataPrompt += `RSI (14-Period): ${data.intraday?.current_rsi_14?.toFixed(3) || 'N/A'}\n`
 
       technicalDataPrompt += `\nLonger-term context (4-hour timeframe):\n`
-      technicalDataPrompt += `20-Period EMA: ${data.fourHour.ema20?.toFixed(3) || 'N/A'} vs. `
-      technicalDataPrompt += `50-Period EMA: ${data.fourHour.ema50?.toFixed(3) || 'N/A'}\n`
-      technicalDataPrompt += `ATR (3-period): ${data.fourHour.atr_3period?.toFixed(3) || 'N/A'} vs. `
-      technicalDataPrompt += `ATR (14-period): ${data.fourHour.atr_14period?.toFixed(3) || 'N/A'}\n`
-      technicalDataPrompt += `Current Volume: ${data.fourHour.current_volume?.toFixed(2) || 'N/A'} vs. `
-      technicalDataPrompt += `Average Volume: ${data.fourHour.avg_volume?.toFixed(2) || 'N/A'}\n`
-      technicalDataPrompt += `4h MACD series (last 10): [${data.fourHour.macd_series.map(m => m.toFixed(3)).join(', ')}]\n`
-      technicalDataPrompt += `4h RSI series (last 10): [${data.fourHour.rsi_series.map(r => r.toFixed(3)).join(', ')}]\n`
+      technicalDataPrompt += `20-Period EMA: ${data.fourHour?.ema20?.toFixed(3) || 'N/A'} vs. `
+      technicalDataPrompt += `50-Period EMA: ${data.fourHour?.ema50?.toFixed(3) || 'N/A'}\n`
+      technicalDataPrompt += `ATR (3-period): ${data.fourHour?.atr_3period?.toFixed(3) || 'N/A'} vs. `
+      technicalDataPrompt += `ATR (14-period): ${data.fourHour?.atr_14period?.toFixed(3) || 'N/A'}\n`
+      technicalDataPrompt += `Current Volume: ${data.fourHour?.current_volume?.toFixed(2) || 'N/A'} vs. `
+      technicalDataPrompt += `Average Volume: ${data.fourHour?.avg_volume?.toFixed(2) || 'N/A'}\n`
+      technicalDataPrompt += `4h MACD series (last 10): [${(data.fourHour?.macd_series || []).map(m => (m || 0).toFixed(3)).join(', ')}]\n`
+      technicalDataPrompt += `4h RSI series (last 10): [${(data.fourHour?.rsi_series || []).map(r => (r || 0).toFixed(3)).join(', ')}]\n`
     }
   }
 
@@ -194,7 +194,7 @@ ACCOUNT PERFORMANCE:
 
 YOUR CURRENT POSITIONS:
 ${positions.length > 0 ? positions.map(p =>
-  `${p.symbol}: ${p.side} ${p.size.toFixed(2)} @ $${p.entry_price.toFixed(2)} | Current: $${p.mark_price?.toFixed(2) || 'N/A'} | Unrealized P&L: $${(p.unrealized_pnl || 0).toFixed(2)} (${(p.unrealized_pnl_percent || 0).toFixed(2)}%)`
+  `${p.symbol}: ${p.side} ${(p.size || 0).toFixed(2)} @ $${(p.entry_price || 0).toFixed(2)} | Current: $${p.mark_price?.toFixed(2) || 'N/A'} | Unrealized P&L: $${(p.unrealized_pnl || 0).toFixed(2)} (${(p.unrealized_pnl_percent || 0).toFixed(2)}%)`
 ).join('\n') : 'None'}
 ${technicalDataPrompt}
 
