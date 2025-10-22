@@ -371,7 +371,8 @@ export async function runAITradingCycle(aiId) {
     // Get account balance from Aster
     const balanceData = await api.getBalance()
     const usdtBalance = balanceData.find(b => b.asset === 'USDT')
-    const actualBalance = parseFloat(usdtBalance?.availableBalance || aiData.balance)
+    // Use 'balance' (total wallet balance) not 'availableBalance' (which excludes margins in positions)
+    const actualBalance = parseFloat(usdtBalance?.balance || aiData.balance)
 
     // Get current positions
     const allPositions = await getAllPositions()
@@ -379,6 +380,8 @@ export async function runAITradingCycle(aiId) {
 
     // Calculate total return
     const initialBalance = 500 // Each AI starts with $500
+    // Note: actualBalance from Aster API already includes margin but NOT unrealized P&L
+    // So we need to add unrealized P&L from positions to get true account value
     const unrealizedPnL = aiPositions.reduce((sum, p) => sum + (p.unrealized_pnl || 0), 0)
     const accountValue = actualBalance + unrealizedPnL
     const totalReturn = ((accountValue - initialBalance) / initialBalance) * 100
