@@ -371,6 +371,11 @@ export async function runAITradingCycle(aiId) {
     // Get account info from Aster (includes totalWalletBalance)
     const accountData = await api.getAccount()
 
+    // DEBUG: Log full account structure to understand the response
+    console.log(`\n========== ${aiData.name} FULL ACCOUNT DATA ==========`)
+    console.log(JSON.stringify(accountData, null, 2))
+    console.log(`==============================================\n`)
+
     // totalWalletBalance = total wallet balance (what Aster UI shows as "Balance")
     // This includes available balance + margin locked in positions
     const actualBalance = parseFloat(accountData?.totalWalletBalance || aiData.balance)
