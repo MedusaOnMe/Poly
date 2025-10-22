@@ -1,0 +1,105 @@
+@import "tailwindcss";
+
+/* Custom color utilities */
+@layer utilities {
+  .bg-dark-grey {
+    background-color: #1a1a1a;
+  }
+
+  .text-skin {
+    color: #f5deb3;
+  }
+
+  .text-skin-light {
+    color: #faebd7;
+  }
+
+  .bg-skin {
+    background-color: #f5deb3;
+  }
+
+  .border-skin {
+    border-color: #f5deb3;
+  }
+}
+
+@layer base {
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background-color: #1a1a1a;
+  }
+
+  html, body, #root {
+    height: 100%;
+    width: 100%;
+  }
+}
+
+@layer components {
+  /* Loading bar animation */
+  @keyframes pulse-loading {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.3;
+    }
+  }
+
+  .loading-bar {
+    animation: pulse-loading 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  /* Ticker scroll animation */
+  @keyframes scroll {
+    0% {
+      transform: translateX(0);
+    }
+    100% {
+      transform: translateX(-50%);
+    }
+  }
+
+  .ticker-scroll {
+    animation: scroll 60s linear infinite;
+  }
+
+  .ticker-scroll:hover {
+    animation-play-state: paused;
+  }
+}
+
+/* Scrollbar styling - dark mode */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1a1a1a;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #333333;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #444444;
+}
+
+/* HARD CORNERS - NO ROUNDED BORDERS */
+* {
+  border-radius: 0 !important;
+}
+
+button, select, input, .rounded, .rounded-lg, .rounded-md, .rounded-sm {
+  border-radius: 0 !important;
+}

@@ -1,0 +1,15 @@
+{
+  "name": "ai-trading-arena",
+  "version": "1.0.0",
+  "description": "AI Trading Competition on Aster DEX",
+  "scripts": {
+    "postinstall": "npm install --prefix server && npm install --prefix client",
+    "build": "npm run build --prefix client",
+    "start": "node server/src/server.js",
+    "dev:client": "npm run dev --prefix client",
+    "dev:server": "npm run dev --prefix server"
+  },
+  "keywords": ["ai", "trading", "aster", "dex"],
+  "author": "",
+  "license": "MIT"
+}
