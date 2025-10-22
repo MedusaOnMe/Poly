@@ -102,33 +102,29 @@ function App() {
               {aiData.filter(ai => ai.wallet_address).map(ai => (
                 <div
                   key={ai.id}
-                  className="relative"
-                  onMouseEnter={() => setOpenDropdown(ai.id)}
-                  onMouseLeave={() => setOpenDropdown(null)}
+                  className="relative group"
                 >
                   <button className="text-sm font-medium text-gray-500 hover:text-gray-300">
-                    VIEW {ai.name?.toUpperCase()} ▼
+                    VIEW {ai.name?.toUpperCase()} WALLET ▼
                   </button>
-                  {openDropdown === ai.id && (
-                    <div className="absolute top-full left-0 mt-1 bg-dark-grey border border-gray-700 rounded shadow-lg py-1 w-40 z-50">
-                      <a
-                        href={`https://hyperbot.network/trader/${ai.wallet_address}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="block px-3 py-1.5 text-xs text-gray-300 hover:bg-gray-800 hover:text-skin"
-                      >
-                        Hyperbot ↗
-                      </a>
-                      <a
-                        href={`https://bscscan.com/address/${ai.wallet_address}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="block px-3 py-1.5 text-xs text-gray-300 hover:bg-gray-800 hover:text-skin"
-                      >
-                        BscScan ↗
-                      </a>
-                    </div>
-                  )}
+                  <div className="absolute top-full left-0 mt-1 bg-dark-grey border border-gray-700 rounded shadow-lg py-1 w-40 z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+                    <a
+                      href={`https://hyperbot.network/trader/${ai.wallet_address}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block px-3 py-1.5 text-xs text-gray-300 hover:bg-gray-800 hover:text-skin"
+                    >
+                      Hyperbot ↗
+                    </a>
+                    <a
+                      href={`https://bscscan.com/address/${ai.wallet_address}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block px-3 py-1.5 text-xs text-gray-300 hover:bg-gray-800 hover:text-skin"
+                    >
+                      BscScan ↗
+                    </a>
+                  </div>
                 </div>
               ))}
             </nav>
