@@ -371,9 +371,22 @@ export async function runAITradingCycle(aiId) {
     // Get account info from Aster (includes totalWalletBalance)
     const accountData = await api.getAccount()
 
-    // DEBUG: Log full account structure to understand the response
-    console.log(`\n========== ${aiData.name} FULL ACCOUNT DATA ==========`)
-    console.log(JSON.stringify(accountData, null, 2))
+    // Filter out empty positions to reduce log spam
+    const activePositions = accountData.positions?.filter(p =>
+      parseFloat(p.positionAmt) !== 0 || parseFloat(p.unrealizedProfit) !== 0
+    ) || []
+
+    // DEBUG: Log account structure with only active positions
+    console.log(`\n========== ${aiData.name} ACCOUNT DATA (Trading Cycle) ==========`)
+    console.log(JSON.stringify({
+      totalWalletBalance: accountData.totalWalletBalance,
+      totalUnrealizedProfit: accountData.totalUnrealizedProfit,
+      totalMarginBalance: accountData.totalMarginBalance,
+      totalInitialMargin: accountData.totalInitialMargin,
+      totalMaintMargin: accountData.totalMaintMargin,
+      availableBalance: accountData.availableBalance,
+      activePositions: activePositions
+    }, null, 2))
     console.log(`==============================================\n`)
 
     // totalWalletBalance = total wallet balance (what Aster UI shows as "Balance")
@@ -472,9 +485,22 @@ export async function updateAllBalances() {
       // Get account info from Aster (includes totalWalletBalance)
       const accountData = await api.getAccount()
 
-      // DEBUG: Log full account structure to understand the response
-      console.log(`\n========== ${aiData.name} FULL ACCOUNT DATA (10s update) ==========`)
-      console.log(JSON.stringify(accountData, null, 2))
+      // Filter out empty positions to reduce log spam
+      const activePositions = accountData.positions?.filter(p =>
+        parseFloat(p.positionAmt) !== 0 || parseFloat(p.unrealizedProfit) !== 0
+      ) || []
+
+      // DEBUG: Log account structure with only active positions
+      console.log(`\n========== ${aiData.name} ACCOUNT DATA (10s update) ==========`)
+      console.log(JSON.stringify({
+        totalWalletBalance: accountData.totalWalletBalance,
+        totalUnrealizedProfit: accountData.totalUnrealizedProfit,
+        totalMarginBalance: accountData.totalMarginBalance,
+        totalInitialMargin: accountData.totalInitialMargin,
+        totalMaintMargin: accountData.totalMaintMargin,
+        availableBalance: accountData.availableBalance,
+        activePositions: activePositions
+      }, null, 2))
       console.log(`==============================================\n`)
 
       // totalWalletBalance = total wallet balance (what Aster UI shows as "Balance")
