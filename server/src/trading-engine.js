@@ -105,7 +105,8 @@ export async function closeExpiredPositions() {
 
           // Close position with correct precision
           const precision = getQuantityPrecision(position.symbol)
-          await api.closePosition(position.symbol, position.side, position.quantity.toFixed(precision))
+          const quantityToClose = position.quantity ? position.quantity.toFixed(precision) : '0'
+          await api.closePosition(position.symbol, position.side, quantityToClose)
 
           // Calculate P&L
           const priceDiff = position.side === 'LONG'
@@ -198,9 +199,24 @@ export async function updateMarketDataJob() {
 
 // Helper function to get correct precision for a symbol
 function getQuantityPrecision(symbol) {
-  // Use cached precision if available
-  if (symbolPrecisionCache[symbol]) {
-    return symbolPrecisionCache[symbol].quantityPrecision
+  // Use cached precision if available, but apply smart minimum based on asset value
+  const exchangePrecision = symbolPrecisionCache[symbol]?.quantityPrecision
+
+  if (exchangePrecision !== undefined) {
+    // For expensive assets, we need MORE decimals to represent minimum $110 notional
+    // Override precision based on typical asset value ranges
+    if (symbol.includes('BTC')) {
+      return Math.max(exchangePrecision, 3)  // BTC needs at least 3 decimals (0.001 = ~$107)
+    } else if (symbol.includes('ETH')) {
+      return Math.max(exchangePrecision, 2)  // ETH needs at least 2 decimals (0.03 = ~$105)
+    } else if (symbol.includes('BNB')) {
+      return Math.max(exchangePrecision, 2)  // BNB needs at least 2 decimals (0.11 = ~$110)
+    } else if (symbol.includes('SOL')) {
+      return Math.max(exchangePrecision, 1)  // SOL needs at least 1 decimal (0.6 = ~$108)
+    }
+
+    // For cheaper altcoins, use exchange precision
+    return exchangePrecision
   }
 
   // Fallback to default precision (should rarely hit this)
@@ -246,14 +262,17 @@ async function executeDecision(aiId, decision) {
 
         // Get current price
         const currentPrice = await api.getPrice(position.symbol)
-        const exitPrice = parseFloat(currentPrice.price)
+        const exitPrice = parseFloat(currentPrice?.price || 0)
 
-        // Calculate PnL with leverage
+        // Calculate PnL with leverage (with defensive checks)
+        const entryPrice = position.entry_price || 0
+        const notional = position.notional || 0
+
         const priceDiff = position.side === 'LONG'
-          ? exitPrice - position.entry_price
-          : position.entry_price - exitPrice
-        const pnlPercent = (priceDiff / position.entry_price) * 100
-        const pnl = (pnlPercent / 100) * position.notional // P&L based on notional value
+          ? exitPrice - entryPrice
+          : entryPrice - exitPrice
+        const pnlPercent = entryPrice > 0 ? (priceDiff / entryPrice) * 100 : 0
+        const pnl = notional > 0 ? (pnlPercent / 100) * notional : 0
 
         // Calculate holding time
         const holdingTimeMs = Date.now() - (position.entry_time || Date.now())
@@ -263,7 +282,8 @@ async function executeDecision(aiId, decision) {
 
         // Close position on exchange with correct precision
         const precision = getQuantityPrecision(position.symbol)
-        await api.closePosition(position.symbol, position.side, position.quantity.toFixed(precision))
+        const quantityToClose = position.quantity ? position.quantity.toFixed(precision) : '0'
+        await api.closePosition(position.symbol, position.side, quantityToClose)
 
         // Cancel any open SL/TP orders for this position
         try {
@@ -314,7 +334,7 @@ async function executeDecision(aiId, decision) {
         // Remove position
         await removePosition(positionId)
 
-        console.log(`${aiData.name}: CLOSED ${position.side} ${position.symbol} | Entry: $${position.entry_price.toFixed(2)} → Exit: $${exitPrice.toFixed(2)} | P&L: $${pnl.toFixed(2)} (${pnlPercent.toFixed(2)}%) | Held: ${holdingTime}`)
+        console.log(`${aiData.name}: CLOSED ${position.side} ${position.symbol} | Entry: $${entryPrice.toFixed(2)} → Exit: $${exitPrice.toFixed(2)} | P&L: $${pnl.toFixed(2)} (${pnlPercent.toFixed(2)}%) | Held: ${holdingTime}`)
       }
       return
     }
@@ -341,11 +361,23 @@ async function executeDecision(aiId, decision) {
 
       // Get current price
       const currentPrice = await api.getPrice(symbol)
-      const entryPrice = parseFloat(currentPrice.price)
+      const entryPrice = parseFloat(currentPrice?.price || 0)
+
+      // Validate we have a valid price
+      if (!entryPrice || entryPrice <= 0 || !isFinite(entryPrice)) {
+        console.log(`${aiData.name}: Invalid entry price ${entryPrice} for ${symbol}, skipping`)
+        return
+      }
 
       // Calculate position size properly:
       // 1. Determine how much of balance to use (AI suggests 'size' in USD, cap at 70% of balance)
       const collateralUSD = Math.min(size || aiData.balance * 0.5, aiData.balance * 0.7)
+
+      // Validate collateral is a valid number
+      if (!collateralUSD || collateralUSD <= 0 || !isFinite(collateralUSD)) {
+        console.log(`${aiData.name}: Invalid collateral ${collateralUSD} for ${symbol}, skipping`)
+        return
+      }
 
       // 2. Calculate notional position value with leverage
       const notionalValue = collateralUSD * leverage
@@ -372,8 +404,8 @@ async function executeDecision(aiId, decision) {
       // 3. Convert to coin quantity
       const quantity = notionalValue / entryPrice
 
-      // Validate quantity is positive
-      if (quantity <= 0) {
+      // Validate quantity is positive and finite
+      if (!quantity || quantity <= 0 || !isFinite(quantity)) {
         console.log(`${aiData.name}: Invalid quantity ${quantity} for ${symbol}, skipping`)
         return
       }
