@@ -65,6 +65,16 @@ export async function updateMarketDataJob() {
   }
 }
 
+// Helper function to get correct precision for a symbol
+function getQuantityPrecision(symbol) {
+  // Most symbols use 3 decimal places
+  // Some like BTC/ETH/BNB use fewer decimals
+  if (symbol.includes('BTC') || symbol.includes('ETH') || symbol.includes('BNB')) {
+    return 2  // 2 decimal places for BTC/ETH/BNB
+  }
+  return 3  // 3 decimal places for most altcoins
+}
+
 // Execute AI trading decision
 async function executeDecision(aiId, decision) {
   const api = asterAPIs[aiId]
@@ -205,7 +215,11 @@ async function executeDecision(aiId, decision) {
         return
       }
 
-      console.log(`${aiData.name}: Opening ${decision.action} ${symbol} | Collateral: $${collateralUSD.toFixed(2)} | Leverage: ${leverage}x | Notional: $${notionalValue.toFixed(2)} | Quantity: ${quantity.toFixed(4)}`)
+      // Get correct precision for this symbol
+      const precision = getQuantityPrecision(symbol)
+      const quantityFormatted = quantity.toFixed(precision)
+
+      console.log(`${aiData.name}: Opening ${decision.action} ${symbol} | Collateral: $${collateralUSD.toFixed(2)} | Leverage: ${leverage}x | Notional: $${notionalValue.toFixed(2)} | Quantity: ${quantityFormatted}`)
 
       // Place order
       const side = decision.action === 'LONG' ? 'BUY' : 'SELL'
@@ -213,7 +227,7 @@ async function executeDecision(aiId, decision) {
         symbol,
         side,
         type: 'MARKET',
-        quantity: quantity.toFixed(6),
+        quantity: quantityFormatted,
         positionSide: decision.action,
         leverage: leverage
       })
@@ -225,14 +239,14 @@ async function executeDecision(aiId, decision) {
       try {
         if (decision.stopLoss) {
           console.log(`${aiData.name}: Placing STOP LOSS @ $${decision.stopLoss}`)
-          const slOrder = await api.placeStopLoss(symbol, decision.action, quantity, decision.stopLoss)
+          const slOrder = await api.placeStopLoss(symbol, decision.action, parseFloat(quantityFormatted), decision.stopLoss)
           stopLossOrderId = slOrder.orderId
           console.log(`${aiData.name}: Stop loss order placed (ID: ${stopLossOrderId})`)
         }
 
         if (decision.takeProfit) {
           console.log(`${aiData.name}: Placing TAKE PROFIT @ $${decision.takeProfit}`)
-          const tpOrder = await api.placeTakeProfit(symbol, decision.action, quantity, decision.takeProfit)
+          const tpOrder = await api.placeTakeProfit(symbol, decision.action, parseFloat(quantityFormatted), decision.takeProfit)
           takeProfitOrderId = tpOrder.orderId
           console.log(`${aiData.name}: Take profit order placed (ID: ${takeProfitOrderId})`)
         }
