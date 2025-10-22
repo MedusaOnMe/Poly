@@ -57,6 +57,11 @@ export class AsterAPI {
     return await this._signedRequest('GET', '/fapi/v4/account')
   }
 
+  // Get account info v3 (includes more details like wallet address)
+  async getAccountV3() {
+    return await this._signedRequest('GET', '/fapi/v3/account')
+  }
+
   // Get current positions
   async getPositions(symbol = null) {
     const params = symbol ? { symbol } : {}

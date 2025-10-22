@@ -197,7 +197,7 @@ export default function PnLChart({ aiData }) {
           const currentBalance = pnlHistory[pnlHistory.length - 1]
           const pnl = ((currentBalance - 500) / 500) * 100
           return (
-            <div key={ai.id} className="border-r border-gray-800 last:border-r-0 p-2 text-center bg-dark-grey hover:bg-gray-800 transition-colors cursor-pointer">
+            <div key={ai.id} className="border-r border-gray-800 last:border-r-0 p-2 text-center bg-dark-grey hover:bg-gray-800 transition-colors">
               <div className="w-8 h-8 mx-auto mb-1.5 overflow-hidden border-2 flex items-center justify-center" style={{ borderColor: ai.id === 'grok' ? '#000' : color, clipPath: 'circle(50%)' }}>
                 <img src={logoSrc} alt={ai.name} className="object-cover" style={{ width: '120%', height: '120%' }} />
               </div>
@@ -206,6 +206,16 @@ export default function PnLChart({ aiData }) {
               <div className={`font-mono text-xs ${pnl >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                 {pnl >= 0 ? '+' : ''}{pnl.toFixed(2)}%
               </div>
+              {ai.wallet_address && (
+                <a
+                  href={`https://bscscan.com/address/${ai.wallet_address}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[10px] text-gray-500 hover:text-skin underline mt-1 block"
+                >
+                  View Wallet →
+                </a>
+              )}
             </div>
           )
         })}
