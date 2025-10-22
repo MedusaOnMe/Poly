@@ -170,7 +170,7 @@ function App() {
 
           <div className="flex-1">
             {/* P&L Chart fills entire area - no border, no padding */}
-            <PnLChart aiData={aiData} />
+            <PnLChart aiData={aiData} positions={positions} />
           </div>
         </div>
 

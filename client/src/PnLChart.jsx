@@ -15,7 +15,7 @@ const AI_LOGOS = {
   grok: '/grok.jpg'
 }
 
-export default function PnLChart({ aiData }) {
+export default function PnLChart({ aiData, positions = [] }) {
   const chartRef = useRef(null)
 
   if (!aiData || aiData.length === 0) {
@@ -184,28 +184,40 @@ export default function PnLChart({ aiData }) {
   const filteredAIs = aiData.filter(ai => ai.id !== 'gemini')
 
   return (
-    <div className="h-full w-full flex flex-col bg-dark-grey pb-4">
-      <div className="flex-1">
+    <div className="h-full w-full flex flex-col bg-dark-grey">
+      <div className="flex-1 min-h-0">
         <Line ref={chartRef} data={{ labels, datasets }} options={options} plugins={[endpointLabelsPlugin]} />
       </div>
-      <div className="grid grid-cols-4 gap-0 border-t border-gray-800">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-0 border-t border-gray-800 flex-shrink-0">
         {filteredAIs.map(ai => {
           const color = AI_COLORS[ai.id]
           const logoSrc = AI_LOGOS[ai.id]
-          // Get the EXACT value from pnl_history that the chart displays (NO FALLBACK)
-          const pnlHistory = ai.pnl_history || Array(24).fill(500)
-          const currentBalance = pnlHistory[pnlHistory.length - 1]
-          const pnl = ((currentBalance - 500) / 500) * 100
+
+          // Calculate total account value (balance + unrealized P&L from positions)
+          const balance = ai.balance || 0
+          const aiPositions = positions.filter(p => p.ai_id === ai.id)
+          const unrealizedPnL = aiPositions.reduce((sum, p) => sum + (p.unrealized_pnl || 0), 0)
+          const totalValue = balance + unrealizedPnL
+
+          // Calculate P&L from starting balance
+          const pnl = ((totalValue - 500) / 500) * 100
+
           return (
             <div key={ai.id} className="border-r border-gray-800 last:border-r-0 p-2 text-center bg-dark-grey hover:bg-gray-800 transition-colors">
               <div className="w-8 h-8 mx-auto mb-1.5 overflow-hidden border-2 flex items-center justify-center" style={{ borderColor: ai.id === 'grok' ? '#000' : color, clipPath: 'circle(50%)' }}>
                 <img src={logoSrc} alt={ai.name} className="object-cover" style={{ width: '120%', height: '120%' }} />
               </div>
               <div className="text-xs font-bold mb-0.5 text-skin">{ai.name.toUpperCase()}</div>
-              <div className="font-mono text-xs font-semibold text-gray-300">${currentBalance.toLocaleString('en-US', { maximumFractionDigits: 2 })}</div>
+              <div className="font-mono text-[10px] text-gray-500">Cash: ${balance.toFixed(2)}</div>
+              <div className="font-mono text-xs font-semibold text-gray-300">${totalValue.toLocaleString('en-US', { maximumFractionDigits: 2 })}</div>
               <div className={`font-mono text-xs ${pnl >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                 {pnl >= 0 ? '+' : ''}{pnl.toFixed(2)}%
               </div>
+              {unrealizedPnL !== 0 && (
+                <div className={`font-mono text-[9px] ${unrealizedPnL >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                  {unrealizedPnL >= 0 ? '+' : ''}${unrealizedPnL.toFixed(2)} unreal
+                </div>
+              )}
               {ai.wallet_address && (
                 <div className="mt-1 flex flex-col gap-0.5">
                   <a
