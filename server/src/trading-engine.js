@@ -370,8 +370,8 @@ async function executeDecision(aiId, decision) {
       }
 
       // Calculate position size properly:
-      // 1. Determine how much of balance to use (AI suggests 'size' in USD, cap at 70% of balance)
-      const collateralUSD = Math.min(size || aiData.balance * 0.5, aiData.balance * 0.7)
+      // 1. Determine how much of balance to use (AI suggests 'size' in USD, cap at 80% of balance)
+      const collateralUSD = Math.min(size || aiData.balance * 0.5, aiData.balance * 0.8)
 
       // Validate collateral is a valid number
       if (!collateralUSD || collateralUSD <= 0 || !isFinite(collateralUSD)) {

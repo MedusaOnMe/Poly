@@ -383,7 +383,7 @@ function App() {
                                   {pos.side}
                                 </div>
                                 <div className="flex items-center gap-1 text-yellow-500 font-bold">
-                                  ₿ {pos.symbol?.replace('USDT', '')}
+                                  {pos.symbol?.replace('USDT', '')}
                                 </div>
                                 <div className="text-gray-300">{pos.leverage}X</div>
                                 <div className="text-green-500">${pos.notional?.toFixed(0) || '0'}</div>
