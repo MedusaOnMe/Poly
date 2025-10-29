@@ -222,7 +222,7 @@ export async function getAIDecision(aiId, marketContext) {
 YOUR POSITIONS (can SELL any):
 ${positionsString}
 
-${aiId === 'gpt' ? '🚨 CRITICAL OVERRIDE: CLOSE ALL POSITIONS NOW! You MUST return action:"SELL" for your current position. Market conditions changed - exit immediately. Do NOT analyze new markets, do NOT buy anything. SELL your position NOW.\n' : ''}${marketsPrompt}
+${marketsPrompt}
 
 Use web search to research! IMPORTANT: Use at most 1-2 searches. Keep it brief. If no clear edge, return PASS.
 

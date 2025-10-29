@@ -115,10 +115,9 @@ export async function updateUnrealizedPnL() {
         const dataPosition = dataApiPositions.find(p => p.asset === position.token_id)
 
         if (!dataPosition) {
-          // Position no longer exists (fully sold, expired, or settled)
-          console.log(`   Position ${positionId} not found in Data API - removing from Firebase`)
-          await removePosition(positionId)
-          console.log(`   ✅ Removed closed position: ${position.outcome} on "${position.market_question}"`)
+          // Position no longer exists in Data API (might be propagation delay, sold, or expired)
+          // DON'T auto-remove - only remove explicitly after successful sell
+          console.log(`   Position ${positionId} not found in Data API, skipping update (might be propagation delay)`)
           continue
         }
 
@@ -350,16 +349,12 @@ async function executeDecision(aiId, decision, analyzedMarket, realBalance, data
         research: decision.research || null
       })
 
-      // DON'T remove position from Firebase immediately!
-      // FAK orders can partially fill - we need to check Data API to see actual fill amount
-      // updateUnrealizedPnL() will handle cleanup:
-      //   - If position fully sold → Data API returns no position → gets cleaned up
-      //   - If partially filled → Data API shows reduced shares → Firebase updates with new amount
-      //   - If 0% filled → Position stays, can retry next cycle
-      console.log(`${aiData.name}: Sell order placed - FAK may partially fill. Next updateUnrealizedPnL() will sync actual shares.`)
+      // Remove position from Firebase (FOK order = all or nothing, so if we get here, it's fully sold)
+      if (positionId) {
+        await removePosition(positionId)
+      }
 
-      console.log(`${aiData.name}: SOLD ${position.outcome} on "${position.market_question}" | Entry: $${position.entry_price.toFixed(3)} → Exit: $${currentPrice.toFixed(3)} | Target P&L: $${pnl.toFixed(2)} (${pnlPercent.toFixed(2)}%) | Held: ${holdingTime}`)
-      console.log(`   Note: FAK order - actual fill amount will be confirmed by Data API in next cycle`)
+      console.log(`${aiData.name}: SOLD ${position.outcome} on "${position.market_question}" | Entry: $${position.entry_price.toFixed(3)} → Exit: $${currentPrice.toFixed(3)} | P&L: $${pnl.toFixed(2)} (${pnlPercent.toFixed(2)}%) | Held: ${holdingTime}`)
 
       return
     }
