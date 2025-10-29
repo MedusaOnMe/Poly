@@ -447,7 +447,7 @@ export class PolymarketAPI {
 
       // Post the order to the exchange
       console.log(`   📤 Posting order to exchange...`)
-      const resp = await this.client.postOrder(order, OrderType.GTC)
+      const resp = await this.client.postOrder(order, OrderType.FOK)
 
       // Check if order actually executed
       if (!resp || !resp.success || resp.errorMsg) {
@@ -496,7 +496,7 @@ export class PolymarketAPI {
       }, { tickSize: "0.01" })
 
       // Post the order to the exchange
-      const resp = await this.client.postOrder(order, OrderType.GTC)
+      const resp = await this.client.postOrder(order, OrderType.FOK)
 
       // Check if order actually executed
       if (!resp || !resp.success || resp.errorMsg) {
