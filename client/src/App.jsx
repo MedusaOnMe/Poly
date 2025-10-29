@@ -3,6 +3,7 @@ import { ref, onValue } from 'firebase/database'
 import { database } from './firebase'
 import PnLChart from './PnLChart'
 import TickerStrip from './components/TickerStrip'
+import { FaXTwitter } from 'react-icons/fa6'
 import './index.css'
 
 const AI_LOGOS = {
@@ -132,6 +133,17 @@ function App() {
               </div>
             </div>
           </div>
+
+          {/* X (Twitter) Link */}
+          <a
+            href="https://x.com/polymindsol"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-gray-400 hover:text-white transition-colors"
+            title="Follow @polymindsol on X"
+          >
+            <FaXTwitter size={24} />
+          </a>
         </div>
       </header>
 
