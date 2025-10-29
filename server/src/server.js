@@ -5,7 +5,7 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 import { AI_PERSONAS } from './ai-traders.js'
 import { initializeAITrader, getAllAITraders, getAllPositions, cleanOldTrades, db } from './firebase.js'
-import { initializeAPIs, runAllAITraders, updateUnrealizedPnL, updateMarketDataJob, updateAllBalances, closeExpiredPositions } from './trading-engine.js'
+import { initializeAPIs, runAllAITraders, updateUnrealizedPnL, updateMarketDataJob, updateAllBalances } from './trading-engine.js'
 
 dotenv.config()
 
@@ -97,28 +97,32 @@ app.get(/^\/(?!api).*/, (req, res) => {
 async function initialize() {
   console.log('🚀 Initializing AI Trading Arena...\n')
 
-  // Parse API keys from environment (ONLY 4 AIs)
-  const apiKeys = [
+  // Parse Polymarket wallet configs from environment (4 AIs)
+  const walletConfigs = [
     {
-      apiKey: process.env.ASTER_API_KEY_1,
-      secretKey: process.env.ASTER_SECRET_KEY_1
+      privateKey: process.env.POLYMARKET_PRIVATE_KEY_1,
+      funder: process.env.POLYMARKET_FUNDER_1,
+      proxy: process.env.POLYMARKET_PROXY_1
     },
     {
-      apiKey: process.env.ASTER_API_KEY_2,
-      secretKey: process.env.ASTER_SECRET_KEY_2
+      privateKey: process.env.POLYMARKET_PRIVATE_KEY_2,
+      funder: process.env.POLYMARKET_FUNDER_2,
+      proxy: process.env.POLYMARKET_PROXY_2
     },
     {
-      apiKey: process.env.ASTER_API_KEY_3,
-      secretKey: process.env.ASTER_SECRET_KEY_3
+      privateKey: process.env.POLYMARKET_PRIVATE_KEY_3,
+      funder: process.env.POLYMARKET_FUNDER_3,
+      proxy: process.env.POLYMARKET_PROXY_3
     },
     {
-      apiKey: process.env.ASTER_API_KEY_4,
-      secretKey: process.env.ASTER_SECRET_KEY_4
+      privateKey: process.env.POLYMARKET_PRIVATE_KEY_4,
+      funder: process.env.POLYMARKET_FUNDER_4,
+      proxy: process.env.POLYMARKET_PROXY_4
     }
   ]
 
-  // Initialize Aster APIs
-  await initializeAPIs(apiKeys)
+  // Initialize Polymarket APIs
+  await initializeAPIs(walletConfigs)
 
   // Initialize AI traders in Firebase (only if they don't exist)
   const existingTraders = await getAllAITraders()
@@ -141,10 +145,11 @@ async function initialize() {
 // Start server
 app.listen(PORT, async () => {
   console.log(`\n${'='.repeat(60)}`)
-  console.log(`🎮 AI TRADING ARENA SERVER`)
+  console.log(`🎮 AI PREDICTION MARKET ARENA`)
   console.log(`${'='.repeat(60)}`)
   console.log(`Server running on port ${PORT}`)
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`)
+  console.log(`Platform: Polymarket`)
   console.log(`${'='.repeat(60)}\n`)
 
   await initialize()
@@ -155,39 +160,33 @@ app.listen(PORT, async () => {
     runAllAITraders()
   })
 
-  // Schedule balance updates every 1 minute
-  cron.schedule('* * * * *', () => {
+  // Schedule balance updates every 20 seconds
+  cron.schedule('*/20 * * * * *', () => {
     updateAllBalances()
   })
 
-  // Schedule P&L updates every minute
-  cron.schedule('* * * * *', () => {
+  // Schedule P&L updates every 15 seconds
+  cron.schedule('*/15 * * * * *', () => {
     updateUnrealizedPnL()
   })
 
-  // Schedule market data updates every 30 seconds
-  cron.schedule('*/30 * * * * *', () => {
+  // Schedule market data updates every hour (markets don't change rapidly)
+  cron.schedule('0 * * * *', () => {
     updateMarketDataJob()
   })
 
-  // Schedule position time limit checks every 30 seconds
-  cron.schedule('*/30 * * * * *', () => {
-    closeExpiredPositions()
-  })
-
-  // Schedule trade cleanup every hour
-  cron.schedule('0 * * * *', () => {
+  // Schedule trade cleanup every 6 hours
+  cron.schedule('0 */6 * * *', () => {
     console.log('🗑️  Running trade cleanup...')
     cleanOldTrades()
   })
 
   console.log('📅 Scheduled jobs:')
-  console.log('   - Balance updates: Every 1 minute')
-  console.log('   - Trading cycles: Every 2 minutes')
-  console.log('   - P&L updates: Every 1 minute')
-  console.log('   - Market data: Every 30 seconds')
-  console.log('   - Position time limits: Every 30 seconds')
-  console.log('   - Trade cleanup: Every hour')
+  console.log('   - Trading cycles: Every 30 seconds')
+  console.log('   - Balance updates: Every 20 seconds')
+  console.log('   - P&L updates: Every 15 seconds')
+  console.log('   - Market data: Every hour')
+  console.log('   - Trade cleanup: Every 6 hours')
   console.log('\n✅ All systems operational!\n')
 
   // Run first cycle immediately (optional, for testing)

@@ -28,18 +28,20 @@ async function fixPnLHistory() {
   const data = snapshot.val()
 
   for (const [aiId, aiData] of Object.entries(data)) {
-    const balance = aiData.balance || 0
-    const pnlHistory = aiData.pnl_history || Array(24).fill(500)
+    const currentValue = aiData.account_value || aiData.balance || 500
+    const oldLength = aiData.pnl_history?.length || 0
 
-    // Update the LAST value to match current balance
-    pnlHistory[pnlHistory.length - 1] = balance
+    // ALWAYS create a fresh 24-element array filled with current value
+    const newPnlHistory = Array(24).fill(currentValue)
 
-    await db.ref(`ai_traders/${aiId}/pnl_history`).set(pnlHistory)
+    await db.ref(`ai_traders/${aiId}/pnl_history`).set(newPnlHistory)
 
-    console.log(`✅ ${aiId}: Updated pnl_history last value to $${balance}`)
+    console.log(`✅ ${aiData.name}: Fixed pnl_history`)
+    console.log(`   Old length: ${oldLength} → New length: 24`)
+    console.log(`   Filled with current value: $${currentValue.toFixed(2)}`)
   }
 
-  console.log('\n✅ All pnl_history arrays updated to match current balances')
+  console.log('\n✅ All pnl_history arrays fixed! Chart should now show lines.')
   process.exit(0)
 }
 

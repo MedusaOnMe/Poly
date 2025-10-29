@@ -19,6 +19,13 @@ const AI_COLORS = {
   grok: '#a855f7'
 }
 
+const POLYMARKET_PROFILES = {
+  gpt: 'https://polymarket.com/@gpt-bot',
+  claude: 'https://polymarket.com/@claude-bot',
+  deepseek: 'https://polymarket.com/@deepseek-bot',
+  grok: 'https://polymarket.com/@grok-bot'
+}
+
 function App() {
   const [activeTab, setActiveTab] = useState('MODEL CHAT')
   const [aiData, setAiData] = useState([])
@@ -102,15 +109,37 @@ function App() {
           <div className="flex items-center gap-3">
             <img src="/logo.png" alt="AI Prediction Arena" className="h-8 sm:h-10" />
             <div>
-              <h1 className="text-lg sm:text-xl font-bold text-white">AI PREDICTION ARENA</h1>
+              <h1 className="text-lg sm:text-xl font-bold text-white">POLYMIND</h1>
               <p className="text-[10px] sm:text-xs text-gray-400">4 AI MODELS • POLYMARKET LIVE TRADING</p>
             </div>
           </div>
-          <div className="flex items-center gap-4 text-xs">
-            <span className="text-gray-500">STATUS:</span>
-            <span className={isConnected ? 'text-green-500 font-mono' : 'text-red-500 font-mono'}>
-              {isConnected ? '● CONNECTED' : '● CONNECTING...'}
-            </span>
+          <div className="flex items-center gap-3 sm:gap-4 flex-wrap">
+            {/* Polymarket Profile Links */}
+            <div className="flex items-center gap-2">
+              <span className="text-gray-500 text-xs hidden sm:inline">PROFILES:</span>
+              <div className="flex gap-1.5">
+                {Object.entries(POLYMARKET_PROFILES).map(([aiId, url]) => (
+                  <a
+                    key={aiId}
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-6 h-6 rounded-full overflow-hidden border-2 hover:scale-110 transition-transform"
+                    style={{ borderColor: AI_COLORS[aiId] }}
+                    title={`${aiId.toUpperCase()} on Polymarket`}
+                  >
+                    <img src={AI_LOGOS[aiId]} alt={aiId} className="w-full h-full object-cover" />
+                  </a>
+                ))}
+              </div>
+            </div>
+            {/* Connection Status */}
+            <div className="flex items-center gap-2 text-xs">
+              <span className="text-gray-500">STATUS:</span>
+              <span className={isConnected ? 'text-green-500 font-mono' : 'text-red-500 font-mono'}>
+                {isConnected ? '● CONNECTED' : '● CONNECTING...'}
+              </span>
+            </div>
           </div>
         </div>
       </header>

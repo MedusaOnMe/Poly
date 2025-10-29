@@ -1,9 +1,34 @@
 @import "tailwindcss";
 
-/* Custom color utilities */
+/* Custom color utilities - Polymarket Theme */
 @layer utilities {
   .bg-dark-grey {
-    background-color: #1a1a1a;
+    background-color: #1D2B3A;
+  }
+
+  .bg-dark-bg {
+    background-color: #1D2B3A;
+  }
+
+  .bg-dark-card {
+    background-color: #2F3F50;
+  }
+
+  .border-dark-border {
+    border-color: #3d4f63;
+  }
+
+  .border-gray-700 {
+    border-color: rgba(255, 255, 255, 0.3) !important;
+  }
+
+  .border-gray-800 {
+    border-color: rgba(255, 255, 255, 0.3) !important;
+  }
+
+  .glass-card {
+    background-color: rgba(47, 63, 80, 0.6);
+    backdrop-filter: blur(8px);
   }
 
   .text-skin {
@@ -34,7 +59,7 @@
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    background-color: #1a1a1a;
+    background-color: #1D2B3A;
   }
 
   html, body, #root {
@@ -69,7 +94,7 @@
   }
 
   .ticker-scroll {
-    animation: scroll 60s linear infinite;
+    animation: scroll 40s linear infinite;
   }
 
   .ticker-scroll:hover {
@@ -77,22 +102,22 @@
   }
 }
 
-/* Scrollbar styling - dark mode */
+/* Scrollbar styling - Polymarket theme */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #1a1a1a;
+  background: #1D2B3A;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #333333;
+  background: #2F3F50;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #444444;
+  background: #3d4f63;
 }
 
 /* HARD CORNERS - NO ROUNDED BORDERS */

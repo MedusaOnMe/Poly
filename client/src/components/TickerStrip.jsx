@@ -13,29 +13,46 @@ export default function TickerStrip({ marketData }) {
     )
   }
 
+  // Helper to truncate market questions for ticker
+  const truncate = (text, maxLength = 50) => {
+    if (!text || text.length <= maxLength) return text
+    return text.slice(0, maxLength) + '...'
+  }
+
   return (
     <div className="bg-dark-card border-b border-dark-border py-3 overflow-hidden">
       <div className="flex ticker-scroll">
-        {doubledData.map((coin, index) => {
-          const priceChange = coin.change_24h || 0
-          const isPositive = priceChange >= 0
+        {doubledData.map((market, index) => {
+          const yesPrice = market.yes_price || 0
+          const volume24h = market.volume_24h || 0
+
+          // Color code YES price based on probability
+          let priceColor = 'text-gray-100'
+          if (yesPrice >= 0.7) {
+            priceColor = 'text-green-400'
+          } else if (yesPrice >= 0.5) {
+            priceColor = 'text-emerald-300'
+          } else if (yesPrice >= 0.3) {
+            priceColor = 'text-yellow-400'
+          } else {
+            priceColor = 'text-red-400'
+          }
 
           return (
             <div
-              key={`${coin.symbol}-${index}`}
+              key={`${market.market_id}-${index}`}
               className="flex items-center gap-3 px-6 whitespace-nowrap"
             >
-              <span className="font-semibold">{coin.symbol}</span>
-              <span className="font-mono text-lg">
-                ${coin.price?.toFixed(2) || '0.00'}
+              <span className="text-white font-medium max-w-md" title={market.question}>
+                {truncate(market.question, 40)}
               </span>
-              <span
-                className={`text-sm ${
-                  isPositive ? 'text-profit-green' : 'text-loss-red'
-                }`}
-              >
-                {isPositive ? '+' : ''}
-                {priceChange.toFixed(2)}%
+              <span className="text-sm text-gray-500">•</span>
+              <span className={`font-mono text-sm font-semibold ${priceColor}`}>
+                YES ${(yesPrice || 0).toFixed(3)}
+              </span>
+              <span className="text-sm text-gray-500">•</span>
+              <span className="text-xs text-white">
+                Vol ${(volume24h / 1000).toFixed(0)}k
               </span>
             </div>
           )
