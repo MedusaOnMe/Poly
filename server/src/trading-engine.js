@@ -255,26 +255,42 @@ async function executeDecision(aiId, decision, analyzedMarket, realBalance, data
       const tokenId = fbPos.token_id
 
       // Find position to close from Data API positions using token_id (more reliable)
-      const position = aiPositions.find(pos => pos.token_id === tokenId)
+      // Data API uses 'tokenID' or 'asset' field for token ID
+      const position = dataApiPositions.find(pos =>
+        (pos.tokenID === tokenId) || (pos.asset === tokenId)
+      )
 
       if (!position) {
         console.log(`${aiData.name}: No Data API position found with token ${tokenId}`)
         return
       }
 
-      // Use current price from Data API position (already available)
-      const currentPrice = position.current_price || position.entry_price
+      // Map Data API position to our format for the rest of the logic
+      const mappedPosition = {
+        ai_id: aiId,
+        ai_name: aiData.name,
+        market_id: position.market,
+        market_question: position.question || fbPos.market_question,
+        outcome: position.side === 'YES' ? 'YES' : 'NO',
+        shares: parseFloat(position.size || 0),
+        entry_price: parseFloat(position.averageCost || 0),
+        current_price: parseFloat(position.currentPrice || 0),
+        token_id: tokenId
+      }
 
-      console.log(`${aiData.name}: Selling ${position.outcome} on "${position.market_question}" at current price $${currentPrice.toFixed(3)}`)
+      // Use current price from mapped position
+      const currentPrice = mappedPosition.current_price || mappedPosition.entry_price
 
-      // Calculate P&L
-      const costBasis = position.shares * position.entry_price
-      const proceeds = position.shares * currentPrice
+      console.log(`${aiData.name}: Selling ${mappedPosition.outcome} on "${mappedPosition.market_question}" at current price $${currentPrice.toFixed(3)}`)
+
+      // Calculate P&L using stored cost_basis from Firebase (accounts for fees/slippage)
+      const costBasis = fbPos.cost_basis || (mappedPosition.shares * mappedPosition.entry_price)
+      const proceeds = mappedPosition.shares * currentPrice
       const pnl = proceeds - costBasis
       const pnlPercent = (pnl / costBasis) * 100
 
-      // Calculate holding time
-      const holdingTimeMs = Date.now() - position.entry_time
+      // Calculate holding time from Firebase entry time
+      const holdingTimeMs = Date.now() - fbPos.entry_time
       const holdingHours = Math.floor(holdingTimeMs / 3600000)
       const holdingMins = Math.floor((holdingTimeMs % 3600000) / 60000)
       const holdingDays = Math.floor(holdingHours / 24)
@@ -284,7 +300,7 @@ async function executeDecision(aiId, decision, analyzedMarket, realBalance, data
         : `${holdingHours}H ${holdingMins}M`
 
       // Sell shares on Polymarket with current market price
-      await api.sellShares(position.token_id, position.shares, currentPrice)
+      await api.sellShares(mappedPosition.token_id, mappedPosition.shares, currentPrice)
 
       // Mark trade time to prevent balance updates during Data API propagation
       lastTradeTime[aiId] = Date.now()
@@ -304,11 +320,11 @@ async function executeDecision(aiId, decision, analyzedMarket, realBalance, data
         ai_id: aiId,
         ai_name: aiData.name,
         action: 'SELL',
-        market_id: position.market_id,
-        market_question: position.market_question,
-        outcome: position.outcome,
-        shares: position.shares,
-        entry_price: position.entry_price,
+        market_id: mappedPosition.market_id,
+        market_question: mappedPosition.market_question,
+        outcome: mappedPosition.outcome,
+        shares: mappedPosition.shares,
+        entry_price: mappedPosition.entry_price,
         exit_price: currentPrice,
         cost: costBasis,
         proceeds: proceeds,
@@ -326,7 +342,7 @@ async function executeDecision(aiId, decision, analyzedMarket, realBalance, data
         await removePosition(positionId)
       }
 
-      console.log(`${aiData.name}: SOLD ${position.outcome} on "${position.market_question}" | Entry: $${position.entry_price.toFixed(3)} → Exit: $${currentPrice.toFixed(3)} | P&L: $${pnl.toFixed(2)} (${pnlPercent.toFixed(2)}%) | Held: ${holdingTime}`)
+      console.log(`${aiData.name}: SOLD ${mappedPosition.outcome} on "${mappedPosition.market_question}" | Entry: $${mappedPosition.entry_price.toFixed(3)} → Exit: $${currentPrice.toFixed(3)} | P&L: $${pnl.toFixed(2)} (${pnlPercent.toFixed(2)}%) | Held: ${holdingTime}`)
 
       // Wait 15 seconds for Data API to propagate the position closure
       console.log(`${aiData.name}: Waiting 15s for Data API to update...`)
