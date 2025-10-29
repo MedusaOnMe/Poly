@@ -24,6 +24,9 @@ const MARKET_CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
 // Track when each AI last placed a trade (to prevent balance updates during propagation)
 const lastTradeTime = {}
 
+// Track which AIs have set conditional token allowance (needed for selling)
+const conditionalAllowanceSet = {}
+
 // Initialize Polymarket API clients
 export async function initializeAPIs(walletConfigs) {
   for (const [index, aiId] of Object.keys(AI_PERSONAS).entries()) {
@@ -112,23 +115,29 @@ export async function updateUnrealizedPnL() {
         const dataPosition = dataApiPositions.find(p => p.asset === position.token_id)
 
         if (!dataPosition) {
-          // Position no longer exists (was closed or expired)
-          console.log(`   Position ${positionId} not found in Data API, skipping update`)
+          // Position no longer exists (fully sold, expired, or settled)
+          console.log(`   Position ${positionId} not found in Data API - removing from Firebase`)
+          await removePosition(positionId)
+          console.log(`   ✅ Removed closed position: ${position.outcome} on "${position.market_question}"`)
           continue
         }
 
         // Use current price from Data API (Data API calls it 'curPrice')
         const currentPrice = dataPosition.curPrice || position.entry_price
 
+        // Use actual shares from Data API (most accurate, prevents "not enough balance" errors when selling)
+        const actualShares = dataPosition.size
+
         // Calculate unrealized P&L using ACTUAL cost_basis (includes fees/slippage)
         // DO NOT recalculate from shares * entry_price - that ignores what we actually paid
-        const costBasis = position.cost_basis || (position.shares * position.entry_price)
-        const currentValue = position.shares * currentPrice
+        const costBasis = position.cost_basis || (actualShares * position.entry_price)
+        const currentValue = actualShares * currentPrice
         const unrealizedPnL = currentValue - costBasis
         const unrealizedPnLPercent = costBasis > 0 ? (unrealizedPnL / costBasis) * 100 : 0
 
-        // Update position in Firebase
+        // Update position in Firebase with actual shares from Data API
         await updatePosition(positionId, {
+          shares: actualShares,  // Sync with Data API for accurate selling
           current_price: currentPrice,
           current_value: currentValue,
           unrealized_pnl: unrealizedPnL,
@@ -251,58 +260,50 @@ async function executeDecision(aiId, decision, analyzedMarket, realBalance, data
         return
       }
 
-      const [positionId, fbPos] = firebasePosition
-      const tokenId = fbPos.token_id
+      const [positionId, position] = firebasePosition
+      const tokenId = position.token_id
 
-      // DEBUG: Log all Data API positions to see field names
-      console.log(`${aiData.name}: Looking for token ${tokenId}`)
-      console.log(`${aiData.name}: Data API has ${dataApiPositions.length} positions:`)
-      dataApiPositions.forEach((pos, i) => {
-        console.log(`  Position ${i}:`, JSON.stringify({
-          tokenID: pos.tokenID,
-          asset: pos.asset,
-          asset_id: pos.asset_id,
-          question: pos.question?.substring(0, 40)
-        }))
-      })
+      // Fetch REAL-TIME position data from Data API to get exact share count
+      // (prevents "not enough balance" errors from rounding differences)
+      console.log(`${aiData.name}: Fetching real-time position data...`)
+      const dataApiPositions = await api.getUserPositions()
+      const dataPosition = dataApiPositions.find(p => p.asset === tokenId)
 
-      // Find position to close from Data API positions using token_id (more reliable)
-      // Data API uses 'tokenID' or 'asset' field for token ID
-      const position = dataApiPositions.find(pos =>
-        (pos.tokenID === tokenId) || (pos.asset === tokenId) || (pos.asset_id === tokenId)
-      )
-
-      if (!position) {
-        console.log(`${aiData.name}: No Data API position found with token ${tokenId}`)
+      if (!dataPosition) {
+        console.log(`${aiData.name}: Position no longer exists in Data API (already closed?)`)
         return
       }
 
-      // Map Data API position to our format for the rest of the logic
-      const mappedPosition = {
-        ai_id: aiId,
-        ai_name: aiData.name,
-        market_id: position.market,
-        market_question: position.question || fbPos.market_question,
-        outcome: position.side === 'YES' ? 'YES' : 'NO',
-        shares: parseFloat(position.size || 0),
-        entry_price: parseFloat(position.averageCost || 0),
-        current_price: parseFloat(position.currentPrice || 0),
-        token_id: tokenId
+      // Use EXACT shares from Data API (most accurate)
+      const shares = dataPosition.size
+      const currentPrice = dataPosition.curPrice || position.entry_price
+
+      console.log(`${aiData.name}: Confirmed position - ${shares} shares at $${currentPrice.toFixed(3)}`)
+
+      // Set conditional token allowance for this specific token (required before selling)
+      // Note: We set allowance for each token individually since they're ERC1155
+      // Track by token_id instead of aiId since different positions have different tokens
+      if (!conditionalAllowanceSet[tokenId]) {
+        console.log(`${aiData.name}: Setting conditional token allowance for token ${tokenId.substring(0, 20)}...`)
+        const allowanceSet = await api.setConditionalTokenAllowance(tokenId)
+        if (allowanceSet) {
+          conditionalAllowanceSet[tokenId] = true
+        } else {
+          console.error(`${aiData.name}: Failed to set conditional token allowance, cannot sell`)
+          return
+        }
       }
 
-      // Use current price from mapped position
-      const currentPrice = mappedPosition.current_price || mappedPosition.entry_price
-
-      console.log(`${aiData.name}: Selling ${mappedPosition.outcome} on "${mappedPosition.market_question}" at current price $${currentPrice.toFixed(3)}`)
+      console.log(`${aiData.name}: Selling ${position.outcome} on "${position.market_question}" at current price $${currentPrice.toFixed(3)}`)
 
       // Calculate P&L using stored cost_basis from Firebase (accounts for fees/slippage)
-      const costBasis = fbPos.cost_basis || (mappedPosition.shares * mappedPosition.entry_price)
-      const proceeds = mappedPosition.shares * currentPrice
+      const costBasis = position.cost_basis || (shares * position.entry_price)
+      const proceeds = shares * currentPrice
       const pnl = proceeds - costBasis
       const pnlPercent = (pnl / costBasis) * 100
 
       // Calculate holding time from Firebase entry time
-      const holdingTimeMs = Date.now() - fbPos.entry_time
+      const holdingTimeMs = Date.now() - position.entry_time
       const holdingHours = Math.floor(holdingTimeMs / 3600000)
       const holdingMins = Math.floor((holdingTimeMs % 3600000) / 60000)
       const holdingDays = Math.floor(holdingHours / 24)
@@ -312,7 +313,7 @@ async function executeDecision(aiId, decision, analyzedMarket, realBalance, data
         : `${holdingHours}H ${holdingMins}M`
 
       // Sell shares on Polymarket with current market price
-      await api.sellShares(mappedPosition.token_id, mappedPosition.shares, currentPrice)
+      await api.sellShares(tokenId, shares, currentPrice)
 
       // Mark trade time to prevent balance updates during Data API propagation
       lastTradeTime[aiId] = Date.now()
@@ -332,11 +333,11 @@ async function executeDecision(aiId, decision, analyzedMarket, realBalance, data
         ai_id: aiId,
         ai_name: aiData.name,
         action: 'SELL',
-        market_id: mappedPosition.market_id,
-        market_question: mappedPosition.market_question,
-        outcome: mappedPosition.outcome,
-        shares: mappedPosition.shares,
-        entry_price: mappedPosition.entry_price,
+        market_id: position.market_id,
+        market_question: position.market_question,
+        outcome: position.outcome,
+        shares: shares,
+        entry_price: position.entry_price,
         exit_price: currentPrice,
         cost: costBasis,
         proceeds: proceeds,
@@ -349,16 +350,16 @@ async function executeDecision(aiId, decision, analyzedMarket, realBalance, data
         research: decision.research || null
       })
 
-      // Remove position from Firebase if it was tracked there
-      if (positionId) {
-        await removePosition(positionId)
-      }
+      // DON'T remove position from Firebase immediately!
+      // FAK orders can partially fill - we need to check Data API to see actual fill amount
+      // updateUnrealizedPnL() will handle cleanup:
+      //   - If position fully sold → Data API returns no position → gets cleaned up
+      //   - If partially filled → Data API shows reduced shares → Firebase updates with new amount
+      //   - If 0% filled → Position stays, can retry next cycle
+      console.log(`${aiData.name}: Sell order placed - FAK may partially fill. Next updateUnrealizedPnL() will sync actual shares.`)
 
-      console.log(`${aiData.name}: SOLD ${mappedPosition.outcome} on "${mappedPosition.market_question}" | Entry: $${mappedPosition.entry_price.toFixed(3)} → Exit: $${currentPrice.toFixed(3)} | P&L: $${pnl.toFixed(2)} (${pnlPercent.toFixed(2)}%) | Held: ${holdingTime}`)
-
-      // Wait 15 seconds for Data API to propagate the position closure
-      console.log(`${aiData.name}: Waiting 15s for Data API to update...`)
-      await new Promise(resolve => setTimeout(resolve, 15000))
+      console.log(`${aiData.name}: SOLD ${position.outcome} on "${position.market_question}" | Entry: $${position.entry_price.toFixed(3)} → Exit: $${currentPrice.toFixed(3)} | Target P&L: $${pnl.toFixed(2)} (${pnlPercent.toFixed(2)}%) | Held: ${holdingTime}`)
+      console.log(`   Note: FAK order - actual fill amount will be confirmed by Data API in next cycle`)
 
       return
     }

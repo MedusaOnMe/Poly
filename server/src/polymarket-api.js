@@ -180,6 +180,39 @@ export class PolymarketAPI {
     }
   }
 
+  // Set allowances for conditional tokens (required before selling positions)
+  // tokenId: The specific ERC1155 token ID to approve (REQUIRED for conditional tokens)
+  async setConditionalTokenAllowance(tokenId) {
+    try {
+      if (!tokenId) {
+        console.error('❌ token_id is required for conditional token allowance')
+        return false
+      }
+
+      console.log(`🔐 Setting conditional token allowance for token ${tokenId.substring(0, 20)}...`)
+
+      if (!this.client || typeof this.client.updateBalanceAllowance !== 'function') {
+        console.error('❌ updateBalanceAllowance() not available in CLOB client')
+        return false
+      }
+
+      // Set conditional token allowance (required for selling)
+      // IMPORTANT: Must pass token_id for ERC1155 conditional tokens
+      await this.client.updateBalanceAllowance({
+        asset_type: 'CONDITIONAL',
+        token_id: tokenId
+      })
+
+      console.log('✅ Conditional token allowance set successfully!')
+      return true
+
+    } catch (error) {
+      console.error('❌ Error setting conditional token allowance:', error.message)
+      console.error('   Full error:', error.response?.data || error)
+      return false
+    }
+  }
+
   // Get active prediction markets from Gamma API
   async getActiveMarkets(options = {}) {
     try {
@@ -477,39 +510,38 @@ export class PolymarketAPI {
       // Use market price - 5% slippage to ensure execution
       const minPrice = Math.max(marketPrice * 0.95, 0.01)
 
-      // Round to tick size (0.01 = 2 decimals) to avoid floating point precision errors
-      // Use toFixed() for clean decimal representation
+      // Round price to tick size (0.01 = 2 decimals)
       const roundedPrice = parseFloat(minPrice.toFixed(2))
-      const roundedShares = parseFloat(shares.toFixed(2)) // Max 2 decimals for shares
 
-      console.log(`📉 Attempting sell: ${roundedShares} shares at market price ${marketPrice.toFixed(3)}, min price ${roundedPrice}`)
+      // DO NOT round shares - use EXACT amount from Data API to prevent "not enough balance" errors
+      // Polymarket accepts fractional shares with high precision
+      console.log(`📉 Attempting sell: ${shares} shares at market price ${marketPrice.toFixed(3)}, min price ${roundedPrice}`)
 
-      // Create market sell order (GTC = Good Till Cancelled, fills partial orders)
-      // Pass tickSize manually to avoid network fetch (most markets use 0.01 = 1 cent increments)
-      const order = await this.client.createMarketOrder({
+      // Create market sell order using createOrder
+      // FAK = Fill-And-Kill - executes immediately for as many shares as available, cancels the rest
+      const order = await this.client.createOrder({
         side: Side.SELL,
         tokenID: tokenId,
-        amount: roundedShares, // Number of shares to sell (max 2 decimals)
+        size: shares, // EXACT shares from Data API (not rounded!)
         feeRateBps: 0,
         nonce: 0,
-        price: roundedPrice // Min price with 5% slippage (rounded to tick size)
-      }, { tickSize: "0.01" })
+        price: roundedPrice // Min price with 5% slippage
+      })
 
-      // Post the order to the exchange
-      const resp = await this.client.postOrder(order, OrderType.FOK)
+      // Post the order to the exchange as FAK (Fill-And-Kill)
+      const resp = await this.client.postOrder(order, OrderType.FAK)
 
-      // Check if order actually executed
+      // Check if order was accepted
       if (!resp || !resp.success || resp.errorMsg) {
         const errorMsg = resp?.errorMsg || 'Order failed - no success confirmation'
         console.error(`❌ Sell order FAILED: ${errorMsg}`)
         throw new Error(`Order failed: ${errorMsg}`)
       }
 
-      console.log(`✅ Sell order executed: ${shares} shares at ~$${marketPrice.toFixed(3)}`)
+      console.log(`✅ Sell order executed: ${shares} shares at min $${roundedPrice} (FAK)`)
       console.log(`   Order ID: ${resp.orderID || 'N/A'}`)
       return resp
     } catch (error) {
-      // Preserve FOK/liquidity error messages for better error handling
       if (error.response?.data?.error) {
         const clobError = error.response.data.error
         console.error('Error selling shares:', clobError)
