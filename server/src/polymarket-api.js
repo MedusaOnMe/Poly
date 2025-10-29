@@ -414,21 +414,16 @@ export class PolymarketAPI {
       // Round price to tick size (0.01 = 2 decimals)
       const roundedPrice = parseFloat(maxPrice.toFixed(2))
 
-      // Calculate shares from USD amount and round to 2 decimals (CLOB requirement)
-      // Use toFixed() to avoid floating point precision errors
-      const calculatedShares = amount / roundedPrice
-      const roundedShares = parseFloat(calculatedShares.toFixed(2))
+      // Round USD amount to 2 decimals (USDC has 6 decimals but CLOB wants max 2)
+      const roundedAmount = parseFloat(amount.toFixed(2))
 
-      // Recalculate actual cost based on rounded shares and round to 2 decimals
-      const actualCost = parseFloat((roundedShares * roundedPrice).toFixed(2))
-
-      console.log(`📈 Attempting buy: ${roundedShares} shares (~$${actualCost.toFixed(2)}) at max price ${roundedPrice}`)
+      console.log(`📈 Attempting buy: $${roundedAmount} at max price ${roundedPrice}`)
 
       // Log order parameters for debugging
       console.log(`   Order params:`)
       console.log(`     tokenID: ${tokenId}`)
       console.log(`     side: BUY`)
-      console.log(`     shares: ${roundedShares}`)
+      console.log(`     amount (USD): ${roundedAmount}`)
       console.log(`     price: ${roundedPrice}`)
       console.log(`     feeRateBps: 0`)
       console.log(`     nonce: 0`)
@@ -437,11 +432,11 @@ export class PolymarketAPI {
       console.log(`     funder: ${this.proxyAddress}`)
 
       // Create market buy order (GTC = Good Till Cancelled, fills partial orders)
-      // Use shares amount instead of USD amount to ensure proper rounding
+      // Pass USD amount (max 2 decimals), let SDK calculate shares
       const order = await this.client.createMarketOrder({
         side: Side.BUY,
         tokenID: tokenId,
-        amount: roundedShares, // Number of shares (max 2 decimals)
+        amount: roundedAmount, // USD amount (max 2 decimals)
         feeRateBps: 0,
         nonce: 0,
         price: roundedPrice // Max price with 5% slippage (rounded to tick size)
@@ -461,7 +456,7 @@ export class PolymarketAPI {
         throw new Error(`Order failed: ${errorMsg}`)
       }
 
-      console.log(`✅ Buy order executed: $${amount} at ~$${marketPrice.toFixed(3)}`)
+      console.log(`✅ Buy order executed: $${roundedAmount} at ~$${marketPrice.toFixed(3)}`)
       console.log(`   Order ID: ${resp.orderID || 'N/A'}`)
       return resp
     } catch (error) {
