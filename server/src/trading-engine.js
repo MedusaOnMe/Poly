@@ -479,6 +479,31 @@ async function executeDecision(aiId, decision, analyzedMarket, realBalance, data
       // Wait 15 seconds for Data API to propagate the new position
       console.log(`${aiData.name}: Waiting 15s for position to propagate on Data API...`)
       await new Promise(resolve => setTimeout(resolve, 15000))
+
+      // Sync actual position values from Data API (true shares and entry price)
+      try {
+        const dataApiPositions = await api.getUserPositions()
+        const actualPosition = dataApiPositions.find(p => p.asset === tokenId)
+
+        if (actualPosition) {
+          const actualShares = parseFloat(actualPosition.size || 0)
+          const actualEntryPrice = parseFloat(actualPosition.averageCost || entryPrice)
+          const actualCostBasis = parseFloat(actualPosition.totalCost || actualCost)
+
+          console.log(`${aiData.name}: Syncing actual position values - Shares: ${shares} → ${actualShares}, Entry: $${entryPrice.toFixed(3)} → $${actualEntryPrice.toFixed(3)}`)
+
+          await updatePosition(positionId, {
+            shares: actualShares,
+            entry_price: actualEntryPrice,
+            cost_basis: actualCostBasis,
+            current_value: actualShares * actualEntryPrice
+          })
+        } else {
+          console.log(`${aiData.name}: ⚠️  Position not found in Data API yet, using estimated values`)
+        }
+      } catch (error) {
+        console.error(`${aiData.name}: Error syncing position from Data API:`, error.message)
+      }
     }
 
   } catch (error) {
