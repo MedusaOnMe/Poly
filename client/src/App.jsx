@@ -156,7 +156,7 @@ function App() {
         <div className="w-full lg:w-[500px] border-t lg:border-t-0 lg:border-l border-gray-800 flex flex-col bg-dark-grey">
           {/* Tabs */}
           <div className="border-b border-gray-800 flex text-[10px] sm:text-xs font-mono overflow-x-auto">
-            {['SETTLED BETS', 'MODEL CHAT', 'ACTIVE BETS', 'ABOUT'].map((tab) => (
+            {['SETTLED POSITIONS', 'MODEL CHAT', 'ACTIVE POSITIONS', 'ABOUT'].map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -245,7 +245,7 @@ function App() {
               </div>
             )}
 
-            {activeTab === 'SETTLED BETS' && (
+            {activeTab === 'SETTLED POSITIONS' && (
               <div>
                 <div className="flex items-center justify-between text-xs font-mono mb-3 pb-2 border-b border-gray-800">
                   <div className="flex items-center gap-2">
@@ -265,78 +265,80 @@ function App() {
                   <span className="text-gray-500">Showing Last 100 Trades</span>
                 </div>
 
-                {trades.filter(t => t.action === 'COMPLETED' && (completedTradesFilter === 'all' || t.ai_id === completedTradesFilter)).length > 0 ? trades.filter(t => t.action === 'COMPLETED' && (completedTradesFilter === 'all' || t.ai_id === completedTradesFilter)).slice(0, 100).map((trade, idx) => {
-                  const isLong = trade.side === 'LONG'
+                {trades.filter(t => t.action === 'SELL' && (completedTradesFilter === 'all' || t.ai_id === completedTradesFilter)).length > 0 ? trades.filter(t => t.action === 'SELL' && (completedTradesFilter === 'all' || t.ai_id === completedTradesFilter)).slice(0, 100).map((trade, idx) => {
                   const isProfitable = (trade.pnl || 0) >= 0
                   const logoSrc = AI_LOGOS[trade.ai_id]
                   const color = AI_COLORS[trade.ai_id]
+                  const marketName = trade.market_question || 'Unknown Market'
 
                   return (
-                    <div key={idx} className="border-b border-gray-800 py-3 hover:bg-dark-grey transition-colors">
-                      {/* Header */}
+                    <div key={idx} className="bg-gray-800/50 rounded-lg p-3 mb-2 hover:bg-gray-800 transition-colors border border-gray-700/30">
+                      {/* Header with AI and Timestamp */}
                       <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2.5">
+                        <div className="flex items-center gap-2">
                           <div className="w-5 h-5 overflow-hidden border-2 flex-shrink-0" style={{ borderColor: trade.ai_id === 'grok' ? '#000000' : color, clipPath: 'circle(50%)' }}>
                             <img src={logoSrc} alt={trade.ai_name} className="object-cover" style={{ width: '120%', height: '120%' }} />
                           </div>
-                          <span className="font-bold text-base" style={{ color }}>{trade.ai_name}</span>
-                          <span className="text-gray-600">•</span>
-                          <span className={`font-bold text-base ${isLong ? 'text-green-500' : 'text-red-500'}`}>
-                            {isLong ? 'LONG' : 'SHORT'}
-                          </span>
-                          <span className="text-gray-600">•</span>
-                          <span className="font-bold text-base text-yellow-500">{trade.symbol?.replace('USDT', '')}</span>
+                          <span className="font-bold text-sm" style={{ color }}>{trade.ai_name?.toUpperCase()}</span>
                         </div>
                         <span className="text-gray-500 text-xs font-mono">{new Date(trade.timestamp).toLocaleString('en-US', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: true })}</span>
                       </div>
 
-                      {/* Trade Details */}
-                      <div className="ml-7 mt-2 bg-gray-900/50 rounded p-2 border border-gray-800">
-                        <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm font-mono mb-2">
-                          <div className="flex justify-between">
-                            <span className="text-gray-500">Entry:</span>
-                            <span className="text-gray-200 font-semibold">${trade.entry_price?.toFixed(2)}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-500">Exit:</span>
-                            <span className="text-gray-200 font-semibold">${trade.exit_price?.toFixed(2)}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-500">Quantity:</span>
-                            <span className="text-gray-300">{trade.quantity?.toFixed(4)}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-500">Leverage:</span>
-                            <span className="text-yellow-400 font-semibold">{trade.leverage}x</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-500">Notional:</span>
-                            <span className="text-gray-300">${trade.notional_entry?.toFixed(0)}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-500">Duration:</span>
-                            <span className="text-gray-300">{trade.holding_time || '0H 0M'}</span>
+                      {/* Market Name & Outcome */}
+                      <div className="flex items-start justify-between mb-2 gap-2">
+                        <div className="flex-1">
+                          <div className="text-xs text-gray-300 leading-relaxed">
+                            {marketName}
                           </div>
                         </div>
-                        <div className="pt-2 border-t border-gray-800 flex justify-between items-center">
-                          <span className="text-gray-400 text-sm font-semibold">NET P&L:</span>
-                          <span className={`text-base font-bold ${isProfitable ? 'text-green-400' : 'text-red-400'}`}>
-                            {isProfitable ? '+' : ''}${(trade.pnl || 0).toFixed(2)} ({((trade.pnl / trade.notional_entry) * 100).toFixed(2)}%)
-                          </span>
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold whitespace-nowrap ${trade.outcome === 'YES' ? 'bg-green-500/20 text-green-500' : 'bg-red-500/20 text-red-500'}`}>
+                          {trade.outcome || '-'}
+                        </span>
+                      </div>
+
+                      {/* Stats Grid */}
+                      <div className="grid grid-cols-4 gap-3 text-xs">
+                        {/* Entry Price */}
+                        <div>
+                          <div className="text-gray-500 text-[10px] mb-0.5">ENTRY</div>
+                          <div className="text-gray-300 font-mono">${trade.entry_price?.toFixed(3) || '0.00'}</div>
+                        </div>
+
+                        {/* Exit Price */}
+                        <div>
+                          <div className="text-gray-500 text-[10px] mb-0.5">EXIT</div>
+                          <div className="text-gray-300 font-mono">${trade.exit_price?.toFixed(3) || '0.00'}</div>
+                        </div>
+
+                        {/* Shares */}
+                        <div>
+                          <div className="text-gray-500 text-[10px] mb-0.5">SHARES</div>
+                          <div className="text-blue-400 font-mono font-semibold">{trade.shares?.toFixed(1) || '0'}</div>
+                        </div>
+
+                        {/* P&L */}
+                        <div className="text-right">
+                          <div className="text-gray-500 text-[10px] mb-0.5">P&L</div>
+                          <div className={`font-mono font-bold ${isProfitable ? 'text-green-500' : 'text-red-500'}`}>
+                            {isProfitable ? '+' : ''}${Math.abs(trade.pnl || 0).toFixed(2)}
+                            <span className="text-[10px] ml-1 opacity-70">
+                              ({isProfitable ? '+' : ''}{(trade.pnl_percent || 0).toFixed(1)}%)
+                            </span>
+                          </div>
                         </div>
                       </div>
                     </div>
                   )
                 }) : (
                   <div className="text-center text-gray-600 py-8">
-                    <div className="mb-2">No completed trades yet</div>
-                    <div className="text-xs">Waiting for AIs to start trading...</div>
+                    <div className="mb-2">No settled positions yet</div>
+                    <div className="text-xs">Positions will appear here when closed</div>
                   </div>
                 )}
               </div>
             )}
 
-            {activeTab === 'ACTIVE BETS' && (
+            {activeTab === 'ACTIVE POSITIONS' && (
               <div>
                 <div className="flex items-center justify-between text-xs font-mono mb-3 pb-2 border-b border-gray-800">
                   <div className="flex items-center gap-2">
