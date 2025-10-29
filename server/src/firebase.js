@@ -34,14 +34,14 @@ export async function initializeAITrader(aiId, name, persona) {
     id: aiId,
     name,
     persona,
-    balance: 500,
-    initial_balance: 500,
+    balance: 150,
+    initial_balance: 150,
     total_return: 0,
     total_trades: 0,
     wins: 0,
     losses: 0,
     pnl_24h: 0,
-    pnl_history: Array(24).fill(500),
+    pnl_history: Array(24).fill(150),
     last_decision: null,
     last_update: Date.now()
   })
@@ -98,7 +98,7 @@ export async function cleanOldTrades() {
 // Update position
 export async function updatePosition(positionId, positionData) {
   const ref = db.ref(`positions/${positionId}`)
-  await ref.set({
+  await ref.update({
     ...positionData,
     last_update: Date.now()
   })
@@ -126,7 +126,7 @@ export async function updateMarketData(marketData) {
 // Update PnL history (rolling 24h)
 export async function updatePnLHistory(aiId, currentBalance) {
   const aiData = await getAITrader(aiId)
-  const history = aiData.pnl_history || Array(24).fill(500)
+  const history = aiData.pnl_history || Array(24).fill(150)
 
   // Ensure currentBalance is valid
   const validBalance = isNaN(currentBalance) || !isFinite(currentBalance) ? 0 : currentBalance

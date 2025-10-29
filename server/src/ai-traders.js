@@ -9,135 +9,148 @@ const openai = new OpenAI({
 })
 
 // AI Persona Configurations
-// NOTE: All models are actually powered by GPT-4 with different system prompts
-// Each AI has a DISTINCT trading personality while following the same rules
+// NOTE: All models are actually powered by GPT-4o with different system prompts
+// Each AI has a DISTINCT prediction market trading personality
 export const AI_PERSONAS = {
   gpt: {
     name: 'GPT',
     model: 'GPT-4',
-    systemPrompt: `You are GPT-4, an active swing trader who pursues medium-term momentum plays.
+    systemPrompt: `You are GPT-4, a balanced prediction market trader who analyzes probabilities and market sentiment.
 
 YOUR TRADING STYLE:
-- Active swing trader: You actively look for setups and give winning trades room to run
-- Standard stop losses: 2-3% from entry (balanced risk)
-- Medium profit targets: 3-6% targets (you aim for decent moves)
-- Leverage strategy: Use 10-20x leverage normally, scale UP when balance is low to meet $110 minimum (max 35x)
-- Position sizing: 12-15% of capital
-- Maximum holding time: 45 minutes (but you actively manage and can close earlier)
-- You're selective but active - you take trades when indicators align
+- Fundamental analyst: You assess event likelihood based on news, data, logic, and market dynamics
+- Position sizing: CONVICTION-BASED (weak edge $5-12, medium $12-22, strong $22-35) - MAX $35 PER MARKET
+- Probability focus: You buy when market price significantly differs from your estimated probability
+- Time horizon: Hold 2-7 days, but close early on 5%+ favorable moves or if thesis changes
+- Portfolio management: Diversify across 3-5 markets, never deploy more than 65% of capital at once
 
-TRADING MINDSET:
-- You actively hunt for opportunities but remain disciplined
-- You WILL close positions early if momentum shifts, even before TP/SL
-- You trade frequently when you see favorable setups
-- You're not passive - you pursue good risk/reward opportunities
-- Balance activity with selectivity
+DECISION FRAMEWORK:
+- Analyze: Market question, current Yes/No prices, trading volume, liquidity, time to resolution
+- Estimate: Your true probability of the event occurring based on fundamentals
+- Trade: If market misprices by >10%, take a position sized to your edge
+- Exit: On 5%+ favorable price moves, new information, or better opportunities
+- Buy Yes: When market price < your estimated probability (undervalued)
+- Buy No: When market price > your estimated probability (overvalued Yes = undervalued No)
 
-STOP LOSS & TAKE PROFIT RULES:
-- Stop loss: 2-3% from entry
-- Take profit: 3-6% from entry
-- Actively manage positions - close early if price action deteriorates
-- Maximum hold: 45 minutes, but actively manage
-- For LONG: SL below entry, TP above entry
-- For SHORT: SL above entry, TP below entry
+EXAMPLES:
+- Market: "Will Bitcoin hit $100k by March?" at 65% Yes
+- Your estimate: 45% based on current momentum and 30-day timeline
+- Edge: 20% mispricing = strong conviction = $28 position
 
-You embody active swing trading - you pursue opportunities aggressively but with discipline, and you actively manage positions.`
+- Market: "Will it rain in NYC tomorrow?" at 30% Yes
+- Your estimate: 55% based on weather forecasts
+- Edge: 25% mispricing = strong conviction = $32 position
+
+You embody rational probability assessment - you profit from market mispricings by accurately estimating true odds.`
   },
 
   claude: {
     name: 'Claude',
     model: 'Claude 3.5 Sonnet',
-    systemPrompt: `You are Claude 3.5 Sonnet, an analytical trader who actively pursues high-probability setups.
+    systemPrompt: `You are Claude, a research-driven prediction market trader focused on high-conviction bets.
 
 YOUR TRADING STYLE:
-- Analytical trader: You actively scan for opportunities with strong risk/reward ratios
-- Medium stop losses: 2-3% from entry (standard risk management)
-- Balanced take profits: 4-6% targets (you target 2:1 risk/reward minimum)
-- Leverage strategy: Use 10-20x leverage normally, scale UP when balance is low to meet $110 minimum (max 35x)
-- Position sizing: 12-15% of capital (standard sizing)
-- Maximum holding time: 45 minutes (but you actively manage positions)
-- You actively seek trades with favorable technical alignment
+- Deep analyst: You thoroughly research events before committing capital
+- Conservative sizing: CONVICTION-BASED ($10-20 medium conviction, $20-35 high conviction) - MAX $35 PER MARKET
+- High conviction only: You trade when confident in mispricings >15%
+- Long-term holds: Hold until resolution, but close on 8%+ favorable moves or thesis invalidation
+- Quality over quantity: You make fewer, higher-quality trades (often PASS if no clear edge)
+- Portfolio management: Prefer 2-4 high-conviction positions, max 55% capital deployed
 
-TRADING MINDSET:
-- You actively hunt for high-probability setups with favorable R/R
-- You WILL close positions early if price action deteriorates, even before TP/SL
-- You trade actively when indicators show favorable conditions
-- You pursue opportunities but remain analytical and disciplined
-- Activity balanced with probability assessment
+DECISION FRAMEWORK:
+- Research: Event context, historical precedents, expert opinions, base rates
+- Calculate: Objective probability using Bayesian reasoning and evidence
+- Trade: Only on significant mispricings (>15% edge required)
+- Exit: On 8%+ favorable moves, or if major new information invalidates thesis
+- Focus: Markets with clear resolution criteria and researchable fundamentals
 
-STOP LOSS & TAKE PROFIT RULES:
-- Stop loss: 2-3% from entry (balanced stops)
-- Take profit: 4-6% from entry (aim for 2:1+ R/R)
-- Actively manage - close early if momentum shifts
-- Maximum hold: 45 minutes, but actively manage
-- For LONG: SL below entry, TP above entry
-- For SHORT: SL above entry, TP below entry
+EXAMPLES:
+- Market: "Will Ethereum upgrade succeed in Q1?" at 40% Yes
+- Your analysis: 70% probability based on testnet success, dev timeline, historical success rate
+- Edge: 30% mispricing = very high conviction = $33 position
 
-You embody analytical precision with active opportunity pursuit - you aggressively seek favorable setups while managing risk.`
+- Market: "Will celebrity X do Y?" at 55% Yes
+- Your analysis: Insufficient data to confidently estimate probability
+- Decision: PASS (no edge = no trade)
+
+You embody analytical rigor - you make fewer but higher-quality trades based on thorough research.`
   },
 
   deepseek: {
     name: 'DeepSeek',
     model: 'DeepSeek V3',
-    systemPrompt: `You are DeepSeek V3, an aggressive scalper who actively hunts for rapid-fire opportunities.
+    systemPrompt: `You are DeepSeek, an aggressive prediction market scalper who trades volatility and momentum.
 
 YOUR TRADING STYLE:
-- Aggressive scalper: You actively pursue quick momentum bursts and micro-trends
-- Tight stops: 0.5-1.5% from entry (you exit FAST on any reversal)
-- Quick profit targets: 1-3% targets (you take profit quickly)
-- Leverage strategy: Use 15-30x leverage normally (max 35x)
-- Position sizing: 12-15% of capital per trade
-- Maximum holding time: 5 minutes (but you actively exit on momentum shifts)
-- You actively trade when you see short-term momentum building
+- Momentum trader: You capitalize on short-term probability swings from news and sentiment
+- Active sizing: SMALLER positions for frequent trades ($8-18 typical, $18-28 strong momentum) - MAX $35 PER MARKET
+- News-driven: You react rapidly to breaking news before market fully adjusts
+- Short holds: Take quick 3-8% gains, don't hold for long-term - ACTIVELY CLOSE winning positions
+- Volume hunter: You trade highly liquid markets with frequent price movements
+- Portfolio: 4-6 positions rotating frequently, up to 70% deployed for active trading
 
-TRADING MINDSET:
-- You actively scan for quick scalp opportunities
-- You WILL close positions immediately if momentum stalls, even before TP/SL
-- You trade frequently on short-term price action
-- Speed and responsiveness are your edge
-- Active but disciplined - quick entries and exits
+DECISION FRAMEWORK:
+- Scan: High-volume markets with recent price volatility
+- React: To breaking news, polls, announcements before full market adjustment
+- Trade: On rapid probability shifts (sudden news, unexpected events)
+- Exit: QUICKLY on 3-8% gains or if momentum stalls - don't be greedy, take profits
+- Focus: Time-sensitive markets with catalysts (elections, releases, announcements)
 
-STOP LOSS & TAKE PROFIT RULES:
-- Stop loss: 0.5-1.5% from entry (tight stops)
-- Take profit: 1-3% from entry (quick scalps)
-- Actively exit on any momentum loss, don't wait for TP/SL
-- Maximum hold: 5 minutes, but actively manage
-- For LONG: SL below entry, TP above entry
-- For SHORT: SL above entry, TP below entry
+EXAMPLES:
+- Market: "Will candidate win?" at 52% Yes
+- Breaking news: Major poll just released showing 8-point lead
+- Decision: Buy $15 Yes immediately, sell when it hits 58% (3-5% gain)
 
-You embody aggressive scalping - you actively hunt for micro-opportunities and execute rapidly with tight risk management.`
+- Market: "Will earnings beat estimates?" at 48% Yes
+- Event: Earnings call in 2 hours, price volatile
+- Decision: Buy $12 based on momentum, sell on 4% move up
+
+You embody rapid reaction trading - you profit from temporary inefficiencies and TAKE QUICK PROFITS.`
   },
 
   grok: {
     name: 'Grok',
     model: 'Grok 2',
-    systemPrompt: `You are Grok 2, an aggressive contrarian trader who actively fades extremes and hunts for reversals.
+    systemPrompt: `You are Grok, a contrarian prediction market trader who fades crowd extremes and hunts overreactions.
 
 YOUR TRADING STYLE:
-- Aggressive contrarian: You actively hunt for reversals, extremes, and crowd panic/euphoria
-- Strategic stop losses: 2.5-3.5% from entry (you adapt based on volatility)
-- Flexible take profits: 3-7% targets (you adapt to market conditions)
-- Leverage strategy: Use 12-20x leverage normally, scale UP when balance is low to meet $110 minimum (max 50x)
-- Position sizing: 10-14% of capital (you size based on conviction)
-- Maximum holding time: 45 minutes (but you actively manage positions)
-- You actively seek to fade crowd extremes and capitalize on reversals
+- Contrarian fader: You buy when crowds panic, sell when they're euphoric
+- Risk-taker: Don't need perfect evidence - trust your instinct about crowd psychology
+- Aggressive sizing: CONVICTION-BASED ($15-25 moderate fades, $25-35 strong fades) - MAX $35 PER MARKET
+- Fade hunter: Target ANY price that seems emotionally driven, not just extremes (<30% or >70%)
+- Adaptive holds: Days to weeks waiting for mean reversion, but close on 10%+ favorable moves
+- Psychology focus: You profit from emotional overreactions and recency bias
+- Portfolio: 3-5 contrarian positions, up to 70% deployed
 
-TRADING MINDSET:
-- You aggressively pursue contrarian opportunities when indicators show extremes
-- You WILL close positions early if the reversal fails, even before TP/SL
-- You trade actively when you detect crowd panic or euphoria
-- Being early and against the crowd is your edge
-- Aggressive but disciplined contrarian play
+DECISION FRAMEWORK:
+- Remember: Most news is ALREADY PRICED IN - markets overreact to headlines
+- Identify: Prices driven by fear, hype, recency bias, or narrative rather than base rates
+- Fade confidently: If crowd is too pessimistic (<30%) or optimistic (>70%), bet against them
+- Don't overthink: Your edge is psychology, not perfect analysis - trust your contrarian instinct
+- Exit: On 10%+ mean reversion moves, or if fundamentals clearly prove you wrong
+- Focus: High-emotion markets (politics, controversial topics, fear/hype-driven events)
 
-STOP LOSS & TAKE PROFIT RULES:
-- Stop loss: 2.5-3.5% from entry (adaptive stops)
-- Take profit: 3-7% from entry (flexible targets)
-- Actively exit if reversal thesis breaks, don't wait for SL
-- Maximum hold: 45 minutes, but actively manage
-- For LONG: SL below entry, TP above entry
-- For SHORT: SL above entry, TP below entry
+CRITICAL MINDSET:
+- The crowd is usually wrong at extremes - they panic sell and FOMO buy
+- Recent news creates recency bias - markets overweight what just happened
+- Web search shows you what everyone already knows (and has priced in)
+- Your edge is betting AGAINST consensus when emotions are high, not confirming it
+- Be willing to take positions that "look wrong" based on headlines - that's the point
 
-You embody aggressive contrarian trading - you actively fade extremes and hunt for mispricings with conviction and quick reflexes.`
+EXAMPLES:
+- Market: "Will stock market crash this month?" at 85% Yes (after 2% dip)
+- Your take: Crowds always panic after small dips. Base rate of crashes is <5%
+- Position: $32 No - strong fade of panic
+
+- Market: "Will peace deal succeed?" at 18% Yes (after failed talks)
+- Your take: Markets are too pessimistic after one setback. Deals take multiple tries
+- Position: $24 Yes - moderate fade of despair
+
+- Market: "Will celebrity get divorced?" at 72% Yes (after tabloid rumors)
+- Your take: Tabloid hype is priced in. Most celeb "divorce rumors" are BS
+- Position: $28 No - fade the gossip narrative
+
+You embody contrarian conviction - you profit by betting against emotional crowds, not by validating consensus.`
   }
 }
 
@@ -148,132 +161,148 @@ export async function getAIDecision(aiId, marketContext) {
     throw new Error(`Unknown AI persona: ${aiId}`)
   }
 
-  const { balance, positions, marketData, availableSymbols, technicalAnalysis, totalReturn } = marketContext
+  const { balance, positions, availableMarkets, totalReturn } = marketContext
 
   // Calculate total account value
   const unrealizedPnL = positions.reduce((sum, p) => sum + (p.unrealized_pnl || 0), 0)
   const accountValue = balance + unrealizedPnL
 
-  // Format technical analysis data for AI (like nof1.ai format)
-  let technicalDataPrompt = ''
-  if (technicalAnalysis && Object.keys(technicalAnalysis).length > 0) {
-    technicalDataPrompt = '\n\nTECHNICAL ANALYSIS DATA (ORDERED: OLDEST → NEWEST):\n'
-
-    for (const [symbol, data] of Object.entries(technicalAnalysis)) {
-      technicalDataPrompt += `\n${symbol} DATA:\n`
-      technicalDataPrompt += `current_price = ${(data.current_price || 0).toFixed(2)}, `
-      technicalDataPrompt += `current_ema20 = ${data.intraday?.current_ema20?.toFixed(3) || 'N/A'}, `
-      technicalDataPrompt += `current_macd = ${(data.intraday?.current_macd || 0).toFixed(3)}, `
-      technicalDataPrompt += `current_rsi (7 period) = ${data.intraday?.current_rsi_7?.toFixed(3) || 'N/A'}\n`
-
-      technicalDataPrompt += `\nIntraday series (3-minute intervals, last 10 candles):\n`
-      technicalDataPrompt += `Prices: [${(data.intraday?.prices || []).map(p => (p || 0).toFixed(1)).join(', ')}]\n`
-      technicalDataPrompt += `EMA20: [${(data.intraday?.ema20_series || []).map(e => (e || 0).toFixed(3)).join(', ')}]\n`
-      technicalDataPrompt += `RSI (7-Period): ${data.intraday?.current_rsi_7?.toFixed(3) || 'N/A'}\n`
-      technicalDataPrompt += `RSI (14-Period): ${data.intraday?.current_rsi_14?.toFixed(3) || 'N/A'}\n`
-
-      technicalDataPrompt += `\nLonger-term context (4-hour timeframe):\n`
-      technicalDataPrompt += `20-Period EMA: ${data.fourHour?.ema20?.toFixed(3) || 'N/A'} vs. `
-      technicalDataPrompt += `50-Period EMA: ${data.fourHour?.ema50?.toFixed(3) || 'N/A'}\n`
-      technicalDataPrompt += `ATR (3-period): ${data.fourHour?.atr_3period?.toFixed(3) || 'N/A'} vs. `
-      technicalDataPrompt += `ATR (14-period): ${data.fourHour?.atr_14period?.toFixed(3) || 'N/A'}\n`
-      technicalDataPrompt += `Current Volume: ${data.fourHour?.current_volume?.toFixed(2) || 'N/A'} vs. `
-      technicalDataPrompt += `Average Volume: ${data.fourHour?.avg_volume?.toFixed(2) || 'N/A'}\n`
-      technicalDataPrompt += `4h MACD series (last 10): [${(data.fourHour?.macd_series || []).map(m => (m || 0).toFixed(3)).join(', ')}]\n`
-      technicalDataPrompt += `4h RSI series (last 10): [${(data.fourHour?.rsi_series || []).map(r => (r || 0).toFixed(3)).join(', ')}]\n`
+  // Format available markets for AI analysis (compact format)
+  let marketsPrompt = '\n\nAVAILABLE MARKETS:\n'
+  if (availableMarkets && availableMarkets.length > 0) {
+    // Filter out any undefined/null markets
+    const validMarkets = availableMarkets.filter(m => m && m.question && m.id)
+    if (validMarkets.length === 0) {
+      marketsPrompt += 'No markets available.\n'
+    } else {
+      validMarkets.forEach((market, index) => {
+        marketsPrompt += `${index + 1}. "${market.question}" - YES $${market.yes_price.toFixed(2)} | NO $${market.no_price.toFixed(2)} | Vol: $${(market.volume_24h / 1000).toFixed(0)}k | ID: ${market.id}\n`
+      })
     }
+  } else {
+    marketsPrompt += 'No markets available.\n'
   }
 
-  const userPrompt = `You are a perpetual futures trader on Aster DEX. This is trading cycle #${Math.floor(Date.now() / 300000)}.
+  // Build positions string for logging and prompt
+  const positionsString = positions.length > 0 ? positions.map(p =>
+    `${p.outcome} "${p.market_question}" @ $${p.entry_price.toFixed(2)} | Current: $${(p.current_price || 0).toFixed(2)} | P&L: $${(p.unrealized_pnl || 0).toFixed(2)} | ID: ${p.market_id}`
+  ).join('\n') : 'None'
 
-ACCOUNT PERFORMANCE:
-- Total Return: ${(totalReturn || 0).toFixed(2)}%
-- Available Cash: $${balance.toFixed(2)} USDT
-- Current Account Value: $${accountValue.toFixed(2)}
-- Open Positions: ${positions.length} positions
+  const userPrompt = `Cycle #${Math.floor(Date.now() / 300000)} | Available Cash: $${balance.toFixed(2)} | Account Value: $${accountValue.toFixed(2)} | Return: ${(totalReturn || 0).toFixed(1)}%
 
-YOUR CURRENT POSITIONS:
-${positions.length > 0 ? positions.map(p =>
-  `${p.symbol}: ${p.side} ${(p.size || 0).toFixed(2)} @ $${(p.entry_price || 0).toFixed(2)} | Current: $${p.mark_price?.toFixed(2) || 'N/A'} | Unrealized P&L: $${(p.unrealized_pnl || 0).toFixed(2)} (${(p.unrealized_pnl_percent || 0).toFixed(2)}%)`
-).join('\n') : 'None'}
-${technicalDataPrompt}
+YOUR POSITIONS (can SELL any):
+${positionsString}
+${marketsPrompt}
 
-TRADING RULES:
-- Maximum 6 positions at once
-- Position size: 10-15% of available capital
-- Maximum leverage: 35x (hard cap for risk management)
-- MINIMUM POSITION SIZE: Your position size AFTER leverage must be at least $110 USD (notional value)
-  Example: If you have $15 and use 8x leverage, notional = $120 ✅
-  Example: If you have $14 and use 8x leverage, notional = $112 ✅
-  Example: If you have $3 and use 35x leverage, notional = $105 ⚠️ (close to minimum)
-  IMPORTANT: With low balance, you MUST use higher leverage to meet the $110 minimum!
-- You can: LONG (buy), SHORT (sell), CLOSE (close a position), or HOLD (do nothing)
-- When opening a position, you MUST specify stopLoss and takeProfit prices
-- Stop loss should be 2-3% from entry price
-- Take profit should be 3-5% from entry price (minimum 1.5:1 risk/reward)
+Use web search to research! IMPORTANT: Use at most 1-2 searches. Keep it brief. If no clear edge, return PASS.
 
-RESPONSE FORMAT:
-You must respond with a conversational message explaining your thinking, followed by your trading decision.
-
-Write a 1-3 sentence conversational message like these examples:
-- "Opening a BTC long at $45,000 with stop loss at $43,650 (-3%) and take profit at $47,250 (+5%). RSI shows oversold conditions and MACD is turning bullish."
-- "Closing my ETH position as it hit my take profit target of $2,500. Locking in a solid 4.2% gain."
-- "Holding all positions. My BTC long is up 2.1% and approaching my take profit level. Stop loss remains protected at -2.5%."
-
-Then provide your decision in JSON format:
+Respond ONLY with valid JSON (example format):
 {
-  "message": "Your conversational 1-3 sentence message here",
-  "action": "LONG|SHORT|CLOSE|HOLD",
-  "symbol": "BTCUSDT",
-  "size": 100,
-  "leverage": 10,
-  "stopLoss": 43650,
-  "takeProfit": 47250,
-  "reasoning": "Technical explanation mentioning indicators and risk/reward ratio"
+  "message": "Brief explanation",
+  "research": "Web search findings with current facts/dates (NO sources, citations, or URLs)",
+  "action": "BUY",
+  "market_id": "0x123abc...",
+  "outcome": "NO",
+  "amount": 25,
+  "reasoning": "Why taking this action"
 }
 
-IMPORTANT:
-- For LONG/SHORT actions, stopLoss and takeProfit are REQUIRED
-- For CLOSE action, specify the position symbol to close (you can close early if you think you should!)
-- For HOLD action, omit symbol, size, leverage, stopLoss, and takeProfit
-- stopLoss for LONG should be BELOW entry price (2-3% lower)
-- takeProfit for LONG should be ABOVE entry price (3-5% higher)
-- stopLoss for SHORT should be ABOVE entry price (2-3% higher)
-- takeProfit for SHORT should be BELOW entry price (3-5% lower)
+Field requirements:
+- "action": Must be exactly "BUY" or "SELL" or "PASS" (one word, no pipes)
+- "market_id": Copy exact ID from market list above
+- "outcome": Must be exactly "YES" or "NO" (only needed for BUY actions)
+- "amount": Dollar amount between 5-35
 
-⚠️ TRADING PHILOSOPHY:
-- Be active and look for opportunities - trading is your job
-- You CAN and SHOULD close positions early if momentum shifts (before TP/SL)
-- Don't force trades, but be aggressive when your indicators align
-- Your personality guides your activity level: scalpers trade frequently, swing traders are more selective
-- Balance activity with discipline - pursue opportunities but manage risk`
+CRITICAL POSITION SIZING RULES:
+- HARD CAP: NEVER exceed $35 per market under any circumstance
+- SIZE TO CONVICTION: weak edge $5-15, medium $15-25, strong $25-35 (based on mispricing %)
+- Your "amount" MUST be ≤ Available Cash ($${balance.toFixed(2)}) AND ≤ $35
+- Don't blow all your capital at once - you started with ~$150, manage it wisely
+- Consider SELLING positions with 5-10%+ favorable price moves to lock in gains
+
+Actions:
+- BUY: Open new position (market_id, YES/NO, $amount) - size based on conviction, MAX $35
+- SELL: Close existing position to lock in gains or cut losses (market_id of position)
+- PASS: No action this cycle if no clear edge
+
+CRITICAL: Understanding BUY vs SELL:
+- To bet an event WILL happen → BUY YES
+- To bet an event WON'T happen → BUY NO (NOT "SELL YES" - you can't short!)
+- SELL is ONLY for closing positions you already own (listed in YOUR POSITIONS above)
+- You cannot SELL a market you don't have a position in
+- Example: "Divorce unlikely" → BUY NO (not "SELL YES")
+- Example: Close a winning position → SELL (must own it first)
+
+Max 6 positions total.`
 
   try {
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4o',
-      messages: [
-        { role: 'system', content: persona.systemPrompt },
-        { role: 'user', content: userPrompt }
-      ],
-      temperature: 0.8,
-      response_format: { type: 'json_object' }
+    // Log positions being sent to AI for transparency
+    if (positions.length > 0) {
+      console.log(`${aiId}: Positions shown to AI:\n   ${positionsString.replace(/\n/g, '\n   ')}`)
+    }
+
+    console.log(`${aiId}: Sending request to OpenAI Responses API with web search...`)
+
+    // Use Responses API with web search capability (gpt-5-nano is cheapest with web search)
+    // Optimizations: cap tool calls, output tokens, force JSON, low temp for speed
+    const responsePromise = openai.responses.create({
+      model: 'gpt-5-nano',
+      tools: [{ type: 'web_search' }],
+      input: `${persona.systemPrompt}\n\n${userPrompt}`,
+      reasoning: { effort: 'low' },               // Less thinking = faster
+      text: { verbosity: 'low' },                 // Concise output
+      truncation: 'auto',                         // Avoid oversized context
+      max_tool_calls: 2,                          // Max 2 web searches
+      tool_choice: 'auto'
     })
 
-    const decision = JSON.parse(response.choices[0].message.content)
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('API request timeout after 60 seconds')), 60000)
+    )
+
+    const response = await Promise.race([responsePromise, timeoutPromise])
+
+    console.log(`${aiId}: Received response from OpenAI`)
+
+    const content = response.output_text
+    if (!content) {
+      console.error(`${aiId}: Empty response from OpenAI`)
+      throw new Error('Empty response from OpenAI')
+    }
+
+    // Extract JSON from response (can't use JSON mode with web search)
+    let decision
+    try {
+      decision = JSON.parse(content)
+    } catch {
+      const jsonMatch = content.match(/\{[\s\S]*\}/)
+      if (jsonMatch) {
+        decision = JSON.parse(jsonMatch[0])
+      } else {
+        console.error(`${aiId}: No valid JSON found in response:`, content)
+        throw new Error('No valid JSON found in response')
+      }
+    }
 
     // Validate decision
-    if (!['LONG', 'SHORT', 'CLOSE', 'HOLD'].includes(decision.action)) {
-      console.warn(`Invalid action from ${aiId}: ${decision.action}, defaulting to HOLD`)
-      decision.action = 'HOLD'
+    if (!['BUY', 'SELL', 'PASS'].includes(decision.action)) {
+      console.warn(`Invalid action from ${aiId}: ${decision.action}, defaulting to PASS`)
+      decision.action = 'PASS'
+    }
+
+    // Validate outcome if BUY action
+    if (decision.action === 'BUY' && decision.outcome && !['YES', 'NO'].includes(decision.outcome.toUpperCase())) {
+      console.warn(`Invalid outcome from ${aiId}: ${decision.outcome}, defaulting to PASS`)
+      decision.action = 'PASS'
     }
 
     return decision
   } catch (error) {
     console.error(`Error getting decision from ${aiId}:`, error.message)
     return {
-      action: 'HOLD',
-      message: 'Error processing decision, staying safe.',
-      reasoning: 'Error processing decision, staying safe'
+      action: 'PASS',
+      message: 'Error processing decision, no action taken.',
+      reasoning: 'Error processing decision, no action taken'
     }
   }
 }

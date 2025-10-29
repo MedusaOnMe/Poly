@@ -17,6 +17,19 @@ const AI_LOGOS = {
 
 export default function PnLChart({ aiData, positions = [] }) {
   const chartRef = useRef(null)
+  const aiDataRef = useRef(aiData)
+  const positionsRef = useRef(positions)
+
+  // Update refs whenever props change
+  useEffect(() => {
+    aiDataRef.current = aiData
+    positionsRef.current = positions
+
+    // Force chart to redraw with new data (updates endpoint labels)
+    if (chartRef.current) {
+      chartRef.current.update('none') // 'none' = no animation for instant update
+    }
+  }, [aiData, positions])
 
   if (!aiData || aiData.length === 0) {
     return (
@@ -71,19 +84,59 @@ export default function PnLChart({ aiData, positions = [] }) {
     id: 'endpointLabels',
     afterDatasetsDraw: (chart) => {
       const ctx = chart.ctx
+      const currentAiData = aiDataRef.current
+
+      // Collect all endpoint data first for collision detection
+      const endpoints = []
       chart.data.datasets.forEach((dataset, i) => {
         const meta = chart.getDatasetMeta(i)
         const lastPoint = meta.data[meta.data.length - 1]
         if (!lastPoint) return
 
-        const ai = aiData.filter(a => a.id !== 'gemini')[i]
+        const ai = currentAiData.filter(a => a.id !== 'gemini')[i]
         if (!ai) return
 
-        const x = lastPoint.x, y = lastPoint.y
-        const color = AI_COLORS[ai.id] || AI_COLORS.gpt
-        // Get balance from pnl_history (same as what the line shows)
-        const pnlHistory = ai.pnl_history || Array(24).fill(500)
-        const balance = pnlHistory[pnlHistory.length - 1]
+        // Use account_value from Firebase (already includes balance + positions value)
+        const accountValue = ai.account_value || ai.balance || 0
+
+        endpoints.push({
+          ai,
+          x: lastPoint.x,
+          y: lastPoint.y,
+          balance: accountValue,
+          color: AI_COLORS[ai.id] || AI_COLORS.gpt
+        })
+      })
+
+      // Sort by y position to handle overlaps from top to bottom
+      endpoints.sort((a, b) => a.y - b.y)
+
+      // Adjust positions to prevent overlap
+      const boxHeight = 18
+      const minGap = 5 // Minimum gap between labels
+
+      for (let i = 1; i < endpoints.length; i++) {
+        const prev = endpoints[i - 1]
+        const curr = endpoints[i]
+
+        // Check if labels would overlap
+        const prevBottom = (prev.adjustedY || prev.y) + boxHeight / 2
+        const currTop = (curr.adjustedY || curr.y) - boxHeight / 2
+        const overlap = prevBottom + minGap - currTop
+
+        if (overlap > 0) {
+          // Overlap detected - split the difference
+          // Move prev up by half, curr down by half
+          const halfOverlap = overlap / 2
+          prev.adjustedY = (prev.adjustedY || prev.y) - halfOverlap
+          curr.adjustedY = (curr.adjustedY || curr.y) + halfOverlap
+        }
+      }
+
+      // Draw all endpoints with adjusted positions
+      endpoints.forEach(endpoint => {
+        const { ai, x, y, balance, color, adjustedY } = endpoint
+        const labelY = adjustedY || y
 
         // Circular avatar with logo image
         const img = new Image()
@@ -117,9 +170,8 @@ export default function PnLChart({ aiData, positions = [] }) {
         ctx.font = 'bold 11px -apple-system, BlinkMacSystemFont, sans-serif'
         const textWidth = ctx.measureText(labelText).width
         const boxWidth = textWidth + 10
-        const boxHeight = 18
         const boxX = x + 22
-        const boxY = y - boxHeight / 2
+        const boxY = labelY - boxHeight / 2
 
         // Hard corner box
         ctx.fillStyle = color
@@ -127,7 +179,7 @@ export default function PnLChart({ aiData, positions = [] }) {
         ctx.fillStyle = '#000'
         ctx.textAlign = 'left'
         ctx.textBaseline = 'middle'
-        ctx.fillText(labelText, boxX + 5, y)
+        ctx.fillText(labelText, boxX + 5, labelY)
         ctx.restore()
       })
     }
@@ -178,14 +230,14 @@ export default function PnLChart({ aiData, positions = [] }) {
           const color = AI_COLORS[ai.id]
           const logoSrc = AI_LOGOS[ai.id]
 
-          // Calculate total account value (balance + unrealized P&L from positions)
+          // Use account_value from Firebase (already includes balance + positions value)
+          const totalValue = ai.account_value || ai.balance || 0
           const balance = ai.balance || 0
-          const aiPositions = positions.filter(p => p.ai_id === ai.id)
-          const unrealizedPnL = aiPositions.reduce((sum, p) => sum + (p.unrealized_pnl || 0), 0)
-          const totalValue = balance + unrealizedPnL
+          const unrealizedPnL = totalValue - balance
 
           // Calculate P&L from starting balance
-          const pnl = ((totalValue - 500) / 500) * 100
+          const initialBalance = 150  // Hardcoded starting balance
+          const pnl = ((totalValue - initialBalance) / initialBalance) * 100
 
           return (
             <div key={ai.id} className="border-r border-gray-800 last:border-r-0 p-1.5 text-center bg-dark-grey hover:bg-gray-800 transition-colors">
@@ -193,16 +245,10 @@ export default function PnLChart({ aiData, positions = [] }) {
                 <img src={logoSrc} alt={ai.name || ai.id} className="object-cover" style={{ width: '120%', height: '120%' }} />
               </div>
               <div className="text-[11px] font-bold mb-0.5 text-skin">{ai.name?.toUpperCase() || ai.id?.toUpperCase() || 'UNKNOWN'}</div>
-              <div className="font-mono text-[9px] text-gray-500">Cash: ${balance.toFixed(2)}</div>
               <div className="font-mono text-[11px] font-semibold text-gray-300">${totalValue.toLocaleString('en-US', { maximumFractionDigits: 2 })}</div>
               <div className={`font-mono text-[11px] ${pnl >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                 {pnl >= 0 ? '+' : ''}{pnl.toFixed(2)}%
               </div>
-              {unrealizedPnL !== 0 && (
-                <div className={`font-mono text-[8px] ${unrealizedPnL >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                  {unrealizedPnL >= 0 ? '+' : ''}${unrealizedPnL.toFixed(2)} unreal
-                </div>
-              )}
             </div>
           )
         })}

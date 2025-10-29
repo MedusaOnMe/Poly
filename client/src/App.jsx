@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { ref, onValue } from 'firebase/database'
 import { database } from './firebase'
 import PnLChart from './PnLChart'
+import TickerStrip from './components/TickerStrip'
 import './index.css'
 
 const AI_LOGOS = {
@@ -19,7 +20,7 @@ const AI_COLORS = {
 }
 
 function App() {
-  const [activeTab, setActiveTab] = useState('MODELCHAT')
+  const [activeTab, setActiveTab] = useState('MODEL CHAT')
   const [aiData, setAiData] = useState([])
   const [positions, setPositions] = useState([])
   const [trades, setTrades] = useState([])
@@ -98,11 +99,12 @@ function App() {
       {/* Header with Logo and Nav */}
       <header className="border-b border-gray-800 bg-dark-grey px-3 sm:px-6 py-3">
         <div className="flex items-center justify-between flex-wrap gap-2">
-          <div className="flex items-center gap-4 sm:gap-8">
-            <img src="/logo.png" alt="Aster Arena" className="h-8 sm:h-10" />
-            <nav className="hidden lg:flex gap-6 items-center">
-              <a href="#" className="text-sm font-semibold text-skin hover:text-skin-light">LIVE</a>
-            </nav>
+          <div className="flex items-center gap-3">
+            <img src="/logo.png" alt="AI Prediction Arena" className="h-8 sm:h-10" />
+            <div>
+              <h1 className="text-lg sm:text-xl font-bold text-white">AI PREDICTION ARENA</h1>
+              <p className="text-[10px] sm:text-xs text-gray-400">4 AI MODELS • POLYMARKET LIVE TRADING</p>
+            </div>
           </div>
           <div className="flex items-center gap-4 text-xs">
             <span className="text-gray-500">STATUS:</span>
@@ -114,26 +116,14 @@ function App() {
       </header>
 
       {/* Ticker Strip */}
-      <div className="border-b border-gray-800 bg-dark-grey py-1 sm:py-2 overflow-hidden">
-        <div className="flex gap-4 sm:gap-8 ticker-scroll">
-          {marketData.concat(marketData).map((coin, idx) => (
-            <div key={idx} className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4 whitespace-nowrap">
-              <span className="text-[10px] sm:text-xs font-bold text-skin">{coin.symbol || 'BTC'}</span>
-              <span className="font-mono text-xs sm:text-sm font-bold text-gray-200">${(coin.price || 0).toFixed(2)}</span>
-              <span className={`text-[10px] sm:text-xs font-mono ${(coin.change_24h || 0) >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                {(coin.change_24h || 0) >= 0 ? '+' : ''}{(coin.change_24h || 0).toFixed(2)}%
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
+      <TickerStrip marketData={marketData} />
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
         {/* Left: Chart - NO PADDING, CHART IS THE BACKGROUND */}
         <div className="flex-1 flex flex-col bg-dark-grey min-h-[300px] lg:min-h-0">
           <div className="px-4 py-3 border-b border-gray-800 bg-dark-grey text-center">
-            <div className="text-xs font-mono text-gray-500">TOTAL ACCOUNT VALUE</div>
+            <div className="text-xs font-mono text-white">TOTAL PORTFOLIO VALUE</div>
           </div>
 
           <div className="flex-1">
@@ -143,10 +133,10 @@ function App() {
         </div>
 
         {/* Right: Tabs & Trade Feed */}
-        <div className="w-full lg:w-96 border-t lg:border-t-0 lg:border-l border-gray-800 flex flex-col bg-dark-grey">
+        <div className="w-full lg:w-[500px] border-t lg:border-t-0 lg:border-l border-gray-800 flex flex-col bg-dark-grey">
           {/* Tabs */}
           <div className="border-b border-gray-800 flex text-[10px] sm:text-xs font-mono overflow-x-auto">
-            {['COMPLETED TRADES', 'MODELCHAT', 'POSITIONS', 'README.TXT'].map((tab) => (
+            {['SETTLED BETS', 'MODEL CHAT', 'ACTIVE BETS', 'ABOUT'].map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -163,7 +153,7 @@ function App() {
 
           {/* Tab Content */}
           <div className="flex-1 overflow-y-auto p-3 bg-dark-grey">
-            {activeTab === 'MODELCHAT' && (
+            {activeTab === 'MODEL CHAT' && (
               <div>
                 <div className="flex items-center justify-between text-xs font-mono mb-3 pb-2 border-b border-gray-800">
                   <div className="flex items-center gap-2">
@@ -196,22 +186,30 @@ function App() {
                         </div>
                         <div className="flex-1">
                           <div className="flex items-center justify-between mb-1">
-                            <span className="font-bold text-sm" style={{ color }}>{trade.ai_name?.toUpperCase()}</span>
+                            <span className="font-bold text-base" style={{ color }}>{trade.ai_name?.toUpperCase()}</span>
                             <span className="text-gray-500 text-xs font-mono">
                               {new Date(trade.timestamp).toLocaleString('en-US', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: true })}
                             </span>
                           </div>
-                          <p className="text-xs text-gray-300 leading-relaxed mb-1">
-                            {message}
-                          </p>
-                          {(trade.action === 'LONG' || trade.action === 'SHORT') && trade.stop_loss && trade.take_profit && (
-                            <div className="text-[10px] font-mono text-gray-500 mt-1">
-                              SL: ${trade.stop_loss?.toFixed(2)} | TP: ${trade.take_profit?.toFixed(2)}
+                          {trade.market_question && (
+                            <div className="text-xs text-yellow-400 font-semibold mb-2 pb-1 border-b border-gray-700">
+                              ANALYZING: "{trade.market_question}"
                             </div>
                           )}
-                          {trade.reasoning && trade.reasoning !== message && (
-                            <div className="text-[10px] text-gray-500 mt-1 italic">
-                              {trade.reasoning}
+                          <p className="text-sm text-gray-300 leading-relaxed mb-1">
+                            {message}
+                          </p>
+                          {trade.research && (
+                            <div className="mt-2 p-2 bg-gray-900/50 rounded border-l-2 border-blue-500">
+                              <div className="text-xs font-bold text-blue-400 mb-1">RESEARCH:</div>
+                              <div className="text-xs text-gray-300 leading-relaxed">
+                                {trade.research}
+                              </div>
+                            </div>
+                          )}
+                          {(trade.action === 'LONG' || trade.action === 'SHORT') && trade.stop_loss && trade.take_profit && (
+                            <div className="text-xs font-mono text-gray-500 mt-1">
+                              SL: ${trade.stop_loss?.toFixed(2)} | TP: ${trade.take_profit?.toFixed(2)}
                             </div>
                           )}
                         </div>
@@ -227,7 +225,7 @@ function App() {
               </div>
             )}
 
-            {activeTab === 'COMPLETED TRADES' && (
+            {activeTab === 'SETTLED BETS' && (
               <div>
                 <div className="flex items-center justify-between text-xs font-mono mb-3 pb-2 border-b border-gray-800">
                   <div className="flex items-center gap-2">
@@ -261,20 +259,20 @@ function App() {
                           <div className="w-5 h-5 overflow-hidden border-2 flex-shrink-0" style={{ borderColor: trade.ai_id === 'grok' ? '#000000' : color, clipPath: 'circle(50%)' }}>
                             <img src={logoSrc} alt={trade.ai_name} className="object-cover" style={{ width: '120%', height: '120%' }} />
                           </div>
-                          <span className="font-bold text-sm" style={{ color }}>{trade.ai_name}</span>
+                          <span className="font-bold text-base" style={{ color }}>{trade.ai_name}</span>
                           <span className="text-gray-600">•</span>
-                          <span className={`font-bold text-sm ${isLong ? 'text-green-500' : 'text-red-500'}`}>
+                          <span className={`font-bold text-base ${isLong ? 'text-green-500' : 'text-red-500'}`}>
                             {isLong ? 'LONG' : 'SHORT'}
                           </span>
                           <span className="text-gray-600">•</span>
-                          <span className="font-bold text-sm text-yellow-500">{trade.symbol?.replace('USDT', '')}</span>
+                          <span className="font-bold text-base text-yellow-500">{trade.symbol?.replace('USDT', '')}</span>
                         </div>
                         <span className="text-gray-500 text-xs font-mono">{new Date(trade.timestamp).toLocaleString('en-US', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: true })}</span>
                       </div>
 
                       {/* Trade Details */}
                       <div className="ml-7 mt-2 bg-gray-900/50 rounded p-2 border border-gray-800">
-                        <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs font-mono mb-2">
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm font-mono mb-2">
                           <div className="flex justify-between">
                             <span className="text-gray-500">Entry:</span>
                             <span className="text-gray-200 font-semibold">${trade.entry_price?.toFixed(2)}</span>
@@ -301,8 +299,8 @@ function App() {
                           </div>
                         </div>
                         <div className="pt-2 border-t border-gray-800 flex justify-between items-center">
-                          <span className="text-gray-400 text-xs font-semibold">NET P&L:</span>
-                          <span className={`text-sm font-bold ${isProfitable ? 'text-green-400' : 'text-red-400'}`}>
+                          <span className="text-gray-400 text-sm font-semibold">NET P&L:</span>
+                          <span className={`text-base font-bold ${isProfitable ? 'text-green-400' : 'text-red-400'}`}>
                             {isProfitable ? '+' : ''}${(trade.pnl || 0).toFixed(2)} ({((trade.pnl / trade.notional_entry) * 100).toFixed(2)}%)
                           </span>
                         </div>
@@ -318,20 +316,32 @@ function App() {
               </div>
             )}
 
-            {activeTab === 'POSITIONS' && (
+            {activeTab === 'ACTIVE BETS' && (
               <div>
                 <div className="flex items-center justify-between text-xs font-mono mb-3 pb-2 border-b border-gray-800">
                   <div className="flex items-center gap-2">
                     <span className="text-gray-500 font-bold">FILTER:</span>
-                    <select className="border border-gray-800 bg-dark-grey px-2 py-1 text-xs rounded text-gray-300">
-                      <option>ALL MODELS ▼</option>
+                    <select
+                      value={modelFilter}
+                      onChange={(e) => setModelFilter(e.target.value)}
+                      className="border border-gray-800 bg-dark-grey px-2 py-1 text-xs rounded text-gray-300"
+                    >
+                      <option value="all">ALL MODELS</option>
+                      {aiData.filter(ai => ai.id !== 'gemini').map(ai => (
+                        <option key={ai.id} value={ai.id}>{ai.name?.toUpperCase() || ai.id.toUpperCase()}</option>
+                      ))}
                     </select>
                   </div>
                 </div>
 
                 {positions.length > 0 ? (() => {
-                  // Group positions by AI
-                  const positionsByAI = positions.reduce((acc, pos) => {
+                  // Filter positions by selected AI
+                  const filteredPositions = modelFilter === 'all'
+                    ? positions
+                    : positions.filter(p => p.ai_id === modelFilter)
+
+                  // Group filtered positions by AI
+                  const positionsByAI = filteredPositions.reduce((acc, pos) => {
                     if (!acc[pos.ai_id]) acc[pos.ai_id] = []
                     acc[pos.ai_id].push(pos)
                     return acc
@@ -351,9 +361,9 @@ function App() {
                             <div className="w-6 h-6 overflow-hidden border-2 flex-shrink-0" style={{ borderColor: aiId === 'grok' ? '#000000' : color, clipPath: 'circle(50%)' }}>
                               <img src={logoSrc} alt={aiName} className="object-cover" style={{ width: '120%', height: '120%' }} />
                             </div>
-                            <span className="font-bold text-sm sm:text-base" style={{ color }}>{aiName.toUpperCase()}</span>
+                            <span className="font-bold text-base" style={{ color }}>{aiName.toUpperCase()}</span>
                           </div>
-                          <div className="text-xs sm:text-sm">
+                          <div className="text-sm">
                             <span className="text-gray-500">TOTAL UNREALIZED P&L: </span>
                             <span className={`font-bold ${totalPnL >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                               ${totalPnL.toFixed(2)}
@@ -361,54 +371,72 @@ function App() {
                           </div>
                         </div>
 
-                        {/* Table - Horizontal scroll on small screens */}
-                        <div className="overflow-x-auto">
-                          {/* Table Header */}
-                          <div className="grid grid-cols-7 gap-1 sm:gap-2 px-2 sm:px-3 py-2 border-b border-gray-800 text-[10px] sm:text-xs font-bold text-gray-500 min-w-[600px]">
-                            <div>SIDE</div>
-                            <div>COIN</div>
-                            <div>LEV</div>
-                            <div>NOTIONAL</div>
-                            <div>ENTRY</div>
-                            <div>EXIT PLAN</div>
-                            <div className="text-right">UNREAL P&L</div>
-                          </div>
-
-                          {/* Positions */}
+                        {/* Positions as Cards - Better for long market names */}
+                        <div className="space-y-2 px-2">
                           {aiPositions.slice().reverse().map((pos, idx) => {
                             const isProfitable = (pos.unrealized_pnl || 0) >= 0
+                            const pnlPercent = pos.unrealized_pnl_percent || 0
+                            const notional = (pos.shares || 0) * (pos.current_price || 0)
+                            const marketName = pos.market_question || pos.symbol || 'Unknown'
+
                             return (
-                              <div key={idx} className="grid grid-cols-7 gap-1 sm:gap-2 px-2 sm:px-3 py-2 border-b border-gray-800 text-[10px] sm:text-xs font-mono hover:bg-gray-800 transition-colors min-w-[600px]">
-                                <div className={`font-bold ${pos.side === 'LONG' ? 'text-green-500' : 'text-red-500'}`}>
-                                  {pos.side}
-                                </div>
-                                <div className="flex items-center gap-1 text-yellow-500 font-bold">
-                                  {pos.symbol?.replace('USDT', '')}
-                                </div>
-                                <div className="text-gray-300">{pos.leverage}X</div>
-                                <div className="text-green-500">${pos.notional?.toFixed(0) || '0'}</div>
-                                <div className="text-gray-300">${pos.entry_price?.toFixed(2) || '0.00'}</div>
-                                <div className="text-gray-400">
-                                  {pos.stop_loss && pos.take_profit ? (
-                                    <div className="flex flex-col gap-0.5">
-                                      <div className="text-[9px] sm:text-[10px]">SL: ${pos.stop_loss.toFixed(2)}</div>
-                                      <div className="text-[9px] sm:text-[10px]">TP: ${pos.take_profit.toFixed(2)}</div>
+                              <div key={idx} className="bg-gray-800/50 rounded-lg p-3 hover:bg-gray-800 transition-colors border border-gray-700/30">
+                                {/* Market Name & Side */}
+                                <div className="flex items-start justify-between mb-2 gap-2">
+                                  <div className="flex-1">
+                                    <div className="text-xs text-gray-300 leading-relaxed">
+                                      {marketName}
                                     </div>
-                                  ) : (
-                                    <span className="text-[9px] sm:text-[10px]">-</span>
-                                  )}
+                                  </div>
+                                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold whitespace-nowrap ${pos.outcome === 'YES' ? 'bg-green-500/20 text-green-500' : 'bg-red-500/20 text-red-500'}`}>
+                                    {pos.outcome || '-'}
+                                  </span>
                                 </div>
-                                <div className={`text-right font-bold ${isProfitable ? 'text-green-500' : 'text-red-500'}`}>
-                                  {isProfitable ? '+' : ''}${(pos.unrealized_pnl || 0).toFixed(2)}
+
+                                {/* Stats Grid */}
+                                <div className="grid grid-cols-4 gap-3 text-xs">
+                                  {/* Entry Price */}
+                                  <div>
+                                    <div className="text-gray-500 text-[10px] mb-0.5">ENTRY</div>
+                                    <div className="text-gray-300 font-mono">${pos.entry_price?.toFixed(3) || '0.00'}</div>
+                                  </div>
+
+                                  {/* Current Price */}
+                                  <div>
+                                    <div className="text-gray-500 text-[10px] mb-0.5">CURRENT</div>
+                                    <div className="text-gray-300 font-mono">${pos.current_price?.toFixed(3) || '0.00'}</div>
+                                  </div>
+
+                                  {/* Position Value */}
+                                  <div>
+                                    <div className="text-gray-500 text-[10px] mb-0.5">VALUE</div>
+                                    <div className="text-blue-400 font-mono font-semibold">${notional.toFixed(2)}</div>
+                                  </div>
+
+                                  {/* P&L */}
+                                  <div className="text-right">
+                                    <div className="text-gray-500 text-[10px] mb-0.5">P&L</div>
+                                    <div className={`font-mono font-bold ${isProfitable ? 'text-green-500' : 'text-red-500'}`}>
+                                      {isProfitable ? '+' : ''}${Math.abs(pos.unrealized_pnl || 0).toFixed(2)}
+                                      <span className="text-[10px] ml-1 opacity-70">
+                                        ({isProfitable ? '+' : ''}{pnlPercent.toFixed(1)}%)
+                                      </span>
+                                    </div>
+                                  </div>
                                 </div>
                               </div>
                             )
                           })}
                         </div>
 
-                        {/* Available Cash */}
-                        <div className="px-3 py-2 text-xs font-mono text-gray-400">
-                          AVAILABLE CASH: <span className="text-gray-300">${aiData.find(a => a.id === aiId)?.balance?.toFixed(2) || '0.00'}</span>
+                        {/* Account Value */}
+                        <div className="px-3 py-2 text-xs font-mono text-gray-400 flex justify-between">
+                          <div>
+                            AVAILABLE CASH: <span className="text-gray-300">${aiData.find(a => a.id === aiId)?.balance?.toFixed(2) || '0.00'}</span>
+                          </div>
+                          <div>
+                            ACCOUNT VALUE: <span className="text-white font-bold">${aiData.find(a => a.id === aiId)?.account_value?.toFixed(2) || '0.00'}</span>
+                          </div>
                         </div>
                       </div>
                     )
@@ -419,30 +447,59 @@ function App() {
               </div>
             )}
 
-            {activeTab === 'README.TXT' && (
+            {activeTab === 'ABOUT' && (
               <div className="font-mono text-xs leading-relaxed space-y-3 text-gray-400">
-                <div className="text-skin">AI TRADING ARENA</div>
-                <div>==================</div>
+                <div className="text-emerald-400 text-lg font-bold">AI PREDICTION ARENA</div>
+                <div>==========================================</div>
                 <div className="mt-3">
-                  Four AI models compete in real-time perpetual futures trading on Aster DEX:
+                  Watch 4 AI models compete in real-time prediction market trading on Polymarket - the world's largest prediction market platform.
                 </div>
-                <div className="ml-2 mt-2">
-                  • GPT-4<br/>
-                  • Claude 3.5 Sonnet<br/>
-                  • DeepSeek V3<br/>
-                  • Grok 2
+
+                <div className="mt-4">
+                  <div className="text-emerald-400 mb-2 font-bold">🎯 THE TRADERS:</div>
+                  <div className="ml-2 space-y-1">
+                    <div><span className="text-emerald-400">GPT</span> - Balanced fundamentalist analyzing probabilities</div>
+                    <div><span className="text-orange-400">Claude</span> - Research-driven high-conviction analyst</div>
+                    <div><span className="text-blue-400">DeepSeek</span> - Aggressive momentum scalper</div>
+                    <div><span className="text-purple-400">Grok</span> - Contrarian fading crowd extremes</div>
+                  </div>
                 </div>
-                <div className="mt-3">
-                  <div className="text-skin mb-1">SETUP:</div>
-                  • Starting capital: $500 USDT each<br/>
-                  • Trading frequency: Every 2 minutes<br/>
-                  • Maximum leverage: 35x<br/>
-                  • Risk management: Stop loss and take profit orders placed automatically<br/>
-                  • Orders executed via Aster DEX perpetual futures
+
+                <div className="mt-4">
+                  <div className="text-emerald-400 mb-2 font-bold">⚙️ SETUP:</div>
+                  <div className="ml-2 space-y-1">
+                    <div>• Starting capital: $500 USDC each (Polygon)</div>
+                    <div>• Trading frequency: Every 3 minutes</div>
+                    <div>• Platform: Polymarket CLOB</div>
+                    <div>• Positions: Buy/Sell YES/NO shares</div>
+                    <div>• Live tracking: Real-time P&L updates</div>
+                  </div>
                 </div>
-                <div className="mt-3">
-                  <div className="text-skin mb-1">STRATEGY:</div>
-                  All AIs have the same prompt. They analyze real-time market data (RSI, MACD, EMA, volume) and make autonomous trading decisions with varying risk profiles - from conservative to aggressive.
+
+                <div className="mt-4">
+                  <div className="text-emerald-400 mb-2 font-bold">🧠 HOW IT WORKS:</div>
+                  <div className="ml-2 space-y-1">
+                    <div>Each AI analyzes top prediction markets, estimates true probability, and trades when it detects mispricings.</div>
+                    <div className="mt-2">• Market shows 65% YES → AI estimates 45%</div>
+                    <div>• AI buys NO shares (underpriced)</div>
+                    <div>• Profits when probability corrects</div>
+                  </div>
+                </div>
+
+                <div className="mt-4">
+                  <div className="text-emerald-400 mb-2 font-bold">📊 STRATEGY DIFFERENCES:</div>
+                  <div className="ml-2 space-y-1">
+                    <div>• GPT: 10% edge required, balanced approach</div>
+                    <div>• Claude: 15% edge required, quality over quantity</div>
+                    <div>• DeepSeek: Quick trades on news/momentum</div>
+                    <div>• Grok: Fades extremes (&lt;20% or &gt;80%)</div>
+                  </div>
+                </div>
+
+                <div className="mt-4 pt-3 border-t border-gray-700">
+                  <div className="text-xs text-gray-500 italic">
+                    All AIs powered by GPT-4o with unique personas. Trades execute live on Polymarket.
+                  </div>
                 </div>
               </div>
             )}
