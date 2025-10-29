@@ -240,20 +240,27 @@ async function executeDecision(aiId, decision, analyzedMarket, realBalance, data
     }
 
     if (decision.action === 'SELL') {
-      // Find position to close from Data API positions (real on-chain data)
-      const position = dataApiPositions.find(pos => pos.market_id === decision.market_id)
-
-      if (!position) {
-        console.log(`${aiData.name}: No position found for market ${decision.market_id}`)
-        return
-      }
-
-      // Also find Firebase position for cleanup
+      // First find Firebase position to get token_id
       const allFirebasePositions = await getAllPositions()
       const firebasePosition = Object.entries(allFirebasePositions).find(
         ([id, pos]) => pos.ai_id === aiId && pos.market_id === decision.market_id
       )
-      const positionId = firebasePosition ? firebasePosition[0] : null
+
+      if (!firebasePosition) {
+        console.log(`${aiData.name}: No Firebase position found for market ${decision.market_id}`)
+        return
+      }
+
+      const [positionId, fbPos] = firebasePosition
+      const tokenId = fbPos.token_id
+
+      // Find position to close from Data API positions using token_id (more reliable)
+      const position = aiPositions.find(pos => pos.token_id === tokenId)
+
+      if (!position) {
+        console.log(`${aiData.name}: No Data API position found with token ${tokenId}`)
+        return
+      }
 
       // Use current price from Data API position (already available)
       const currentPrice = position.current_price || position.entry_price
