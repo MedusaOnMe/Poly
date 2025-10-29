@@ -254,10 +254,22 @@ async function executeDecision(aiId, decision, analyzedMarket, realBalance, data
       const [positionId, fbPos] = firebasePosition
       const tokenId = fbPos.token_id
 
+      // DEBUG: Log all Data API positions to see field names
+      console.log(`${aiData.name}: Looking for token ${tokenId}`)
+      console.log(`${aiData.name}: Data API has ${dataApiPositions.length} positions:`)
+      dataApiPositions.forEach((pos, i) => {
+        console.log(`  Position ${i}:`, JSON.stringify({
+          tokenID: pos.tokenID,
+          asset: pos.asset,
+          asset_id: pos.asset_id,
+          question: pos.question?.substring(0, 40)
+        }))
+      })
+
       // Find position to close from Data API positions using token_id (more reliable)
       // Data API uses 'tokenID' or 'asset' field for token ID
       const position = dataApiPositions.find(pos =>
-        (pos.tokenID === tokenId) || (pos.asset === tokenId)
+        (pos.tokenID === tokenId) || (pos.asset === tokenId) || (pos.asset_id === tokenId)
       )
 
       if (!position) {
