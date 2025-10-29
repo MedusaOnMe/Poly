@@ -132,14 +132,6 @@ function App() {
               </div>
             </div>
           </div>
-
-          {/* Connection Status */}
-          <div className="flex items-center gap-2 text-xs">
-            <span className="text-gray-500">STATUS:</span>
-            <span className={isConnected ? 'text-green-500 font-mono' : 'text-red-500 font-mono'}>
-              {isConnected ? '● CONNECTED' : '● CONNECTING...'}
-            </span>
-          </div>
         </div>
       </header>
 
