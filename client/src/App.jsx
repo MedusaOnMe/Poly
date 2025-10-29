@@ -105,26 +105,28 @@ function App() {
     <div className="h-screen flex flex-col bg-dark-grey text-gray-100">
       {/* Header with Logo and Nav */}
       <header className="border-b border-gray-800 bg-dark-grey px-3 sm:px-6 py-3">
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div className="flex items-center gap-4 sm:gap-6">
             <img src="/logo.png" alt="AI Prediction Arena" className="h-8 sm:h-10" />
             <div>
               <h1 className="text-lg sm:text-xl font-bold text-white">POLYMIND</h1>
               <p className="text-[10px] sm:text-xs text-gray-400">4 AI MODELS • POLYMARKET LIVE TRADING</p>
             </div>
-          </div>
-          <div className="flex items-center gap-3 sm:gap-4 flex-wrap">
-            {/* Polymarket Profile Links */}
-            <div className="flex items-center gap-2">
-              <span className="text-gray-500 text-xs hidden sm:inline">PROFILES:</span>
-              <div className="flex gap-1.5">
+
+            {/* Polymarket Profile Links - Big and Clear */}
+            <div className="flex items-center gap-3 border-l border-gray-700 pl-4 sm:pl-6">
+              <div>
+                <div className="text-xs font-bold text-white uppercase">Check Live Portfolios</div>
+                <div className="text-[10px] text-gray-400">View on Polymarket</div>
+              </div>
+              <div className="flex gap-2">
                 {Object.entries(POLYMARKET_PROFILES).map(([aiId, url]) => (
                   <a
                     key={aiId}
                     href={url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="w-6 h-6 rounded-full overflow-hidden border-2 hover:scale-110 transition-transform"
+                    className="w-10 h-10 rounded-full overflow-hidden border-2 hover:scale-110 transition-transform shadow-lg"
                     style={{ borderColor: AI_COLORS[aiId] }}
                     title={`${aiId.toUpperCase()} on Polymarket`}
                   >
@@ -133,13 +135,14 @@ function App() {
                 ))}
               </div>
             </div>
-            {/* Connection Status */}
-            <div className="flex items-center gap-2 text-xs">
-              <span className="text-gray-500">STATUS:</span>
-              <span className={isConnected ? 'text-green-500 font-mono' : 'text-red-500 font-mono'}>
-                {isConnected ? '● CONNECTED' : '● CONNECTING...'}
-              </span>
-            </div>
+          </div>
+
+          {/* Connection Status */}
+          <div className="flex items-center gap-2 text-xs">
+            <span className="text-gray-500">STATUS:</span>
+            <span className={isConnected ? 'text-green-500 font-mono' : 'text-red-500 font-mono'}>
+              {isConnected ? '● CONNECTED' : '● CONNECTING...'}
+            </span>
           </div>
         </div>
       </header>

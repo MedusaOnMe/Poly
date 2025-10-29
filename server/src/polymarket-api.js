@@ -411,17 +411,24 @@ export class PolymarketAPI {
       // Use market price + 5% slippage to ensure execution
       const maxPrice = Math.min(marketPrice * 1.05, 0.99)
 
-      // Round to tick size (0.01 = 2 decimals) to avoid floating point precision errors
-      const roundedPrice = Math.round(maxPrice * 100) / 100
-      const roundedAmount = Math.round(amount * 10000) / 10000 // Max 4 decimals for USDC
+      // Round price to tick size (0.01 = 2 decimals)
+      const roundedPrice = parseFloat(maxPrice.toFixed(2))
 
-      console.log(`📈 Attempting buy: $${roundedAmount} at market price ${marketPrice.toFixed(3)}, max price ${roundedPrice}`)
+      // Calculate shares from USD amount and round to 2 decimals (CLOB requirement)
+      // Use toFixed() to avoid floating point precision errors
+      const calculatedShares = amount / roundedPrice
+      const roundedShares = parseFloat(calculatedShares.toFixed(2))
+
+      // Recalculate actual cost based on rounded shares and round to 2 decimals
+      const actualCost = parseFloat((roundedShares * roundedPrice).toFixed(2))
+
+      console.log(`📈 Attempting buy: ${roundedShares} shares (~$${actualCost.toFixed(2)}) at max price ${roundedPrice}`)
 
       // Log order parameters for debugging
       console.log(`   Order params:`)
       console.log(`     tokenID: ${tokenId}`)
       console.log(`     side: BUY`)
-      console.log(`     amount: ${roundedAmount}`)
+      console.log(`     shares: ${roundedShares}`)
       console.log(`     price: ${roundedPrice}`)
       console.log(`     feeRateBps: 0`)
       console.log(`     nonce: 0`)
@@ -430,11 +437,11 @@ export class PolymarketAPI {
       console.log(`     funder: ${this.proxyAddress}`)
 
       // Create market buy order (GTC = Good Till Cancelled, fills partial orders)
-      // Pass tickSize manually to avoid network fetch (most markets use 0.01 = 1 cent increments)
+      // Use shares amount instead of USD amount to ensure proper rounding
       const order = await this.client.createMarketOrder({
         side: Side.BUY,
         tokenID: tokenId,
-        amount: roundedAmount, // USD amount to spend (max 4 decimals)
+        amount: roundedShares, // Number of shares (max 2 decimals)
         feeRateBps: 0,
         nonce: 0,
         price: roundedPrice // Max price with 5% slippage (rounded to tick size)
@@ -476,8 +483,9 @@ export class PolymarketAPI {
       const minPrice = Math.max(marketPrice * 0.95, 0.01)
 
       // Round to tick size (0.01 = 2 decimals) to avoid floating point precision errors
-      const roundedPrice = Math.round(minPrice * 100) / 100
-      const roundedShares = Math.round(shares * 100) / 100 // Max 2 decimals for shares
+      // Use toFixed() for clean decimal representation
+      const roundedPrice = parseFloat(minPrice.toFixed(2))
+      const roundedShares = parseFloat(shares.toFixed(2)) // Max 2 decimals for shares
 
       console.log(`📉 Attempting sell: ${roundedShares} shares at market price ${marketPrice.toFixed(3)}, min price ${roundedPrice}`)
 

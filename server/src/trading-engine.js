@@ -169,16 +169,6 @@ export async function updateAllBalances() {
 
       console.log(`${aiData.name}: Cash=$${realBalance.toFixed(2)}, Positions=$${positionsValue.toFixed(2)}, Total=$${portfolioValue.toFixed(2)}`)
 
-      // HARD PROTECTION: Block any single update that swings >20% (likely API failure)
-      const previousValue = aiData.account_value || aiData.balance || 0
-      if (previousValue > 0) {
-        const percentChange = Math.abs((portfolioValue - previousValue) / previousValue) * 100
-        if (percentChange > 20) {
-          console.log(`⚠️  ${aiData.name}: BLOCKED ${percentChange.toFixed(1)}% swing ($${previousValue.toFixed(2)} → $${portfolioValue.toFixed(2)}) - likely API failure`)
-          continue
-        }
-      }
-
       // Calculate total return
       const totalReturn = ((portfolioValue - aiData.initial_balance) / aiData.initial_balance) * 100
 
@@ -626,26 +616,39 @@ export async function runAITradingCycle(aiId) {
     // Execute decision (pass real balance, market being analyzed, and Data API positions)
     await executeDecision(aiId, decision, availableMarkets[0], realBalance, aiPositions)
 
-    // Store balance snapshot (use REAL data from Data API)
-    await storeBalanceSnapshot(aiId, {
-      balance: realBalance,
-      unrealized_pnl: unrealizedPnL,
-      account_value: realPortfolioValue,
-      total_return: realReturn,
-      positions_count: aiPositions.length
-    })
+    // HARD PROTECTION: Block any single update that swings >20% (likely API failure)
+    const previousValue = aiData.account_value || aiData.balance || 0
+    let skipBalanceUpdate = false
+    if (previousValue > 0) {
+      const percentChange = Math.abs((realPortfolioValue - previousValue) / previousValue) * 100
+      if (percentChange > 20) {
+        console.log(`⚠️  ${aiData.name}: BLOCKED ${percentChange.toFixed(1)}% swing in trading cycle ($${previousValue.toFixed(2)} → $${realPortfolioValue.toFixed(2)}) - likely API failure`)
+        skipBalanceUpdate = true
+      }
+    }
 
-    // Update P&L history (use REAL portfolio value)
-    await updatePnLHistory(aiId, realPortfolioValue)
+    // Sync Firebase AI trader data with real values (unless blocked)
+    if (!skipBalanceUpdate) {
+      await updateAITrader(aiId, {
+        balance: realBalance,
+        account_value: realPortfolioValue,  // Total portfolio value (liquid + positions)
+        unrealized_pnl: unrealizedPnL,
+        total_return: realReturn,
+        last_update: Date.now()
+      })
 
-    // Sync Firebase AI trader data with real values
-    await updateAITrader(aiId, {
-      balance: realBalance,
-      account_value: realPortfolioValue,  // Total portfolio value (liquid + positions)
-      unrealized_pnl: unrealizedPnL,
-      total_return: realReturn,
-      last_update: Date.now()
-    })
+      // Store balance snapshot (use REAL data from Data API) - only if not blocked
+      await storeBalanceSnapshot(aiId, {
+        balance: realBalance,
+        unrealized_pnl: unrealizedPnL,
+        account_value: realPortfolioValue,
+        total_return: realReturn,
+        positions_count: aiPositions.length
+      })
+
+      // Update P&L history (use REAL portfolio value) - only if not blocked
+      await updatePnLHistory(aiId, realPortfolioValue)
+    }
 
     console.log(`✅ ${aiData.name}: Cycle complete\n`)
 

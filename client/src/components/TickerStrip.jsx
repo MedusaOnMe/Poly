@@ -26,17 +26,8 @@ export default function TickerStrip({ marketData }) {
           const yesPrice = market.yes_price || 0
           const volume24h = market.volume_24h || 0
 
-          // Color code YES price based on probability
-          let priceColor = 'text-gray-100'
-          if (yesPrice >= 0.7) {
-            priceColor = 'text-green-400'
-          } else if (yesPrice >= 0.5) {
-            priceColor = 'text-emerald-300'
-          } else if (yesPrice >= 0.3) {
-            priceColor = 'text-yellow-400'
-          } else {
-            priceColor = 'text-red-400'
-          }
+          // Always show YES in green
+          const priceColor = 'text-green-400'
 
           return (
             <div
