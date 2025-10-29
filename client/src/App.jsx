@@ -107,11 +107,7 @@ function App() {
       <header className="border-b border-gray-800 bg-dark-grey px-3 sm:px-6 py-3">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-4 sm:gap-6">
-            <img src="/logo.png" alt="AI Prediction Arena" className="h-8 sm:h-10" />
-            <div>
-              <h1 className="text-lg sm:text-xl font-bold text-white">POLYMIND</h1>
-              <p className="text-[10px] sm:text-xs text-gray-400">4 AI MODELS • POLYMARKET LIVE TRADING</p>
-            </div>
+            <img src="/logo.png" alt="AI Prediction Arena" className="h-12 sm:h-16" />
 
             {/* Polymarket Profile Links - Big and Clear */}
             <div className="flex items-center gap-3 border-l border-gray-700 pl-4 sm:pl-6">
