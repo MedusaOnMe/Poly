@@ -21,6 +21,9 @@ let cachedMarkets = []
 let lastMarketFetch = 0
 const MARKET_CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
 
+// Track when each AI last placed a trade (to prevent balance updates during propagation)
+const lastTradeTime = {}
+
 // Initialize Polymarket API clients
 export async function initializeAPIs(walletConfigs) {
   for (const [index, aiId] of Object.keys(AI_PERSONAS).entries()) {
@@ -152,6 +155,14 @@ export async function updateAllBalances() {
       const api = polymarketAPIs[aiId]
       if (!api || !api.isInitialized()) continue
 
+      // Skip balance update if AI placed a trade in the last 20 seconds
+      // (prevents reading intermediate state during Data API propagation)
+      const timeSinceLastTrade = Date.now() - (lastTradeTime[aiId] || 0)
+      if (timeSinceLastTrade < 20000) {
+        console.log(`${AI_PERSONAS[aiId].name}: Skipping balance update (trade ${Math.round(timeSinceLastTrade / 1000)}s ago, waiting for propagation)`)
+        continue
+      }
+
       const aiData = await getAITrader(aiId)
 
       // Get REAL USDC balance from proxy wallet
@@ -267,6 +278,9 @@ async function executeDecision(aiId, decision, analyzedMarket, realBalance, data
 
       // Sell shares on Polymarket with current market price
       await api.sellShares(position.token_id, position.shares, currentPrice)
+
+      // Mark trade time to prevent balance updates during Data API propagation
+      lastTradeTime[aiId] = Date.now()
 
       // Update balance (estimated - will sync with Data API next cycle)
       const newBalance = balance + proceeds
@@ -428,6 +442,9 @@ async function executeDecision(aiId, decision, analyzedMarket, realBalance, data
 
       // Buy shares on Polymarket with current market price
       await api.buyShares(tokenId, actualCost, entryPrice)
+
+      // Mark trade time to prevent balance updates during Data API propagation
+      lastTradeTime[aiId] = Date.now()
 
       // Update balance (estimated - will sync with Data API next cycle)
       const newBalance = balance - actualCost
