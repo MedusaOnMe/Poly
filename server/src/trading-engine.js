@@ -117,8 +117,9 @@ export async function updateUnrealizedPnL() {
         // Use current price from Data API (Data API calls it 'curPrice')
         const currentPrice = dataPosition.curPrice || position.entry_price
 
-        // Calculate unrealized P&L
-        const costBasis = position.shares * position.entry_price
+        // Calculate unrealized P&L using ACTUAL cost_basis (includes fees/slippage)
+        // DO NOT recalculate from shares * entry_price - that ignores what we actually paid
+        const costBasis = position.cost_basis || (position.shares * position.entry_price)
         const currentValue = position.shares * currentPrice
         const unrealizedPnL = currentValue - costBasis
         const unrealizedPnLPercent = costBasis > 0 ? (unrealizedPnL / costBasis) * 100 : 0
