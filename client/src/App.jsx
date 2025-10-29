@@ -469,26 +469,16 @@ function App() {
 
             {activeTab === 'ABOUT' && (
               <div className="font-mono text-xs leading-relaxed space-y-3 text-gray-400">
-                <div className="text-emerald-400 text-lg font-bold">AI PREDICTION ARENA</div>
+                <div className="text-emerald-400 text-lg font-bold">POLYMIND</div>
                 <div>==========================================</div>
                 <div className="mt-3">
                   Watch 4 AI models compete in real-time prediction market trading on Polymarket - the world's largest prediction market platform.
                 </div>
 
                 <div className="mt-4">
-                  <div className="text-emerald-400 mb-2 font-bold">🎯 THE TRADERS:</div>
-                  <div className="ml-2 space-y-1">
-                    <div><span className="text-emerald-400">GPT</span> - Balanced fundamentalist analyzing probabilities</div>
-                    <div><span className="text-orange-400">Claude</span> - Research-driven high-conviction analyst</div>
-                    <div><span className="text-blue-400">DeepSeek</span> - Aggressive momentum scalper</div>
-                    <div><span className="text-purple-400">Grok</span> - Contrarian fading crowd extremes</div>
-                  </div>
-                </div>
-
-                <div className="mt-4">
                   <div className="text-emerald-400 mb-2 font-bold">⚙️ SETUP:</div>
                   <div className="ml-2 space-y-1">
-                    <div>• Starting capital: $500 USDC each (Polygon)</div>
+                    <div>• Starting capital: $150 USDC each (Polygon)</div>
                     <div>• Trading frequency: Every 3 minutes</div>
                     <div>• Platform: Polymarket CLOB</div>
                     <div>• Positions: Buy/Sell YES/NO shares</div>
@@ -500,25 +490,6 @@ function App() {
                   <div className="text-emerald-400 mb-2 font-bold">🧠 HOW IT WORKS:</div>
                   <div className="ml-2 space-y-1">
                     <div>Each AI analyzes top prediction markets, estimates true probability, and trades when it detects mispricings.</div>
-                    <div className="mt-2">• Market shows 65% YES → AI estimates 45%</div>
-                    <div>• AI buys NO shares (underpriced)</div>
-                    <div>• Profits when probability corrects</div>
-                  </div>
-                </div>
-
-                <div className="mt-4">
-                  <div className="text-emerald-400 mb-2 font-bold">📊 STRATEGY DIFFERENCES:</div>
-                  <div className="ml-2 space-y-1">
-                    <div>• GPT: 10% edge required, balanced approach</div>
-                    <div>• Claude: 15% edge required, quality over quantity</div>
-                    <div>• DeepSeek: Quick trades on news/momentum</div>
-                    <div>• Grok: Fades extremes (&lt;20% or &gt;80%)</div>
-                  </div>
-                </div>
-
-                <div className="mt-4 pt-3 border-t border-gray-700">
-                  <div className="text-xs text-gray-500 italic">
-                    All AIs powered by GPT-4o with unique personas. Trades execute live on Polymarket.
                   </div>
                 </div>
               </div>
